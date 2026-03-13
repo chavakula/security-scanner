@@ -217,7 +217,7 @@ type aiEnrichmentResult struct {
 // EnrichVulnerabilities sends existing vulnerabilities through the AI enrichment layer.
 // It builds structured evidence for each vuln, sends them to the model, and attaches
 // the resulting AIEnrichment to each vulnerability.
-func (a *OpenAIAnalyzer) EnrichVulnerabilities(ctx context.Context, vulns []models.Vulnerability, verbose bool) []models.Vulnerability {
+func (a *OpenAIAnalyzer) EnrichVulnerabilities(ctx context.Context, vulns []models.Vulnerability, projectPath string, verbose bool) []models.Vulnerability {
 	if len(vulns) == 0 {
 		return vulns
 	}
@@ -225,7 +225,7 @@ func (a *OpenAIAnalyzer) EnrichVulnerabilities(ctx context.Context, vulns []mode
 	// Build evidence blocks
 	var evidenceBlocks []string
 	for i := range vulns {
-		ev := BuildEvidence(vulns[i], "")
+		ev := BuildEvidence(vulns[i], projectPath)
 		evidenceBlocks = append(evidenceBlocks, FormatEvidenceForPrompt(ev, i+1))
 	}
 

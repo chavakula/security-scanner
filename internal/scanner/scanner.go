@@ -1,10 +1,12 @@
 package scanner
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -94,13 +96,19 @@ func (s *Scanner) Run(ctx context.Context) error {
 		result.Errors = append(result.Errors, errs...)
 	}
 
+	// Step 3b: Populate dependency paths and reachability evidence
+	if len(allVulns) > 0 {
+		populateDepPaths(allVulns, s.opts.Path)
+		populateReachability(allVulns, s.opts.Path, s.opts.Verbose)
+	}
+
 	// Step 3.5: AI enrichment layer — enrich ALL vulnerabilities with structured analysis
 	if !s.opts.SkipAI && s.cfg.OpenAIKey != "" && len(allVulns) > 0 {
 		if s.opts.Verbose {
 			fmt.Fprintf(os.Stderr, "Running AI enrichment on %d findings...\n", len(allVulns))
 		}
 		ai := analyzer.NewOpenAIAnalyzer(s.cfg.OpenAIKey, s.cfg.OpenAIModel)
-		allVulns = ai.EnrichVulnerabilities(ctx, allVulns, s.opts.Verbose)
+		allVulns = ai.EnrichVulnerabilities(ctx, allVulns, s.opts.Path, s.opts.Verbose)
 		if s.opts.Verbose {
 			enriched := 0
 			for _, v := range allVulns {
@@ -319,4 +327,120 @@ func filterBySeverity(vulns []models.Vulnerability, minSeverity models.Severity)
 		}
 	}
 	return filtered
+}
+
+// populateDepPaths sets the DepPath field on dependency vulnerabilities
+// to show the path from the project through the manifest to the vulnerable package.
+func populateDepPaths(vulns []models.Vulnerability, projectPath string) {
+	projectName := filepath.Base(projectPath)
+	for i := range vulns {
+		if vulns[i].DepPath != "" {
+			continue
+		}
+		pkg := vulns[i].Package
+		if pkg.Name == "" {
+			continue
+		}
+		manifest := filepath.Base(pkg.FilePath)
+		if manifest == "" || manifest == "." {
+			manifest = string(pkg.Ecosystem)
+		}
+		vulns[i].DepPath = projectName + " → " + manifest + " → " + pkg.Name + "@" + pkg.Version
+	}
+}
+
+// populateReachability does a lightweight check to determine if vulnerable packages
+// are actually imported/referenced in source code. Code-analysis and Semgrep findings
+// are marked as directly reachable since they matched actual source code.
+func populateReachability(vulns []models.Vulnerability, projectPath string, verbose bool) {
+	// Build a set of package names from dependency vulns that need reachability checks
+	needCheck := make(map[string]bool)
+	for i := range vulns {
+		if vulns[i].Reachable != "" {
+			continue
+		}
+		switch vulns[i].Source {
+		case models.SourcePatternMatch, models.SourceAIAnalysis, models.SourceSemgrep:
+			vulns[i].Reachable = "direct — code pattern matched in source"
+		case models.SourceOSV, models.SourceNVD, models.SourceGitHubAdv:
+			if vulns[i].Package.Name != "" {
+				needCheck[vulns[i].Package.Name] = false
+			}
+		}
+	}
+
+	if len(needCheck) == 0 {
+		return
+	}
+
+	// Walk source files and look for import/require/from statements referencing the packages
+	importPatterns := buildImportPatterns(needCheck)
+	filepath.Walk(projectPath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return nil
+		}
+		if info.IsDir() {
+			base := info.Name()
+			if base == "node_modules" || base == ".git" || base == "vendor" ||
+				base == "__pycache__" || base == "target" || base == "build" || base == "dist" {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		ext := filepath.Ext(path)
+		if ext != ".go" && ext != ".py" && ext != ".js" && ext != ".ts" &&
+			ext != ".jsx" && ext != ".tsx" && ext != ".java" {
+			return nil
+		}
+		scanFileForImports(path, importPatterns)
+		return nil
+	})
+
+	// Apply reachability results back to vulnerabilities
+	for i := range vulns {
+		if vulns[i].Reachable != "" {
+			continue
+		}
+		pkgName := vulns[i].Package.Name
+		if pkgName == "" {
+			continue
+		}
+		if found, ok := importPatterns[pkgName]; ok && found {
+			vulns[i].Reachable = "imported — package is referenced in source code"
+		} else {
+			vulns[i].Reachable = "unknown — no direct import found in scanned source files"
+		}
+	}
+}
+
+// buildImportPatterns creates a map of package names to check, initially all false.
+func buildImportPatterns(needCheck map[string]bool) map[string]bool {
+	result := make(map[string]bool, len(needCheck))
+	for pkg := range needCheck {
+		result[pkg] = false
+	}
+	return result
+}
+
+// scanFileForImports reads a source file line by line and marks packages as found
+// if they appear in import/require/from statements.
+func scanFileForImports(filePath string, patterns map[string]bool) {
+	f, err := os.Open(filePath)
+	if err != nil {
+		return
+	}
+	defer f.Close()
+
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		line := scanner.Text()
+		for pkg := range patterns {
+			if patterns[pkg] {
+				continue // already found
+			}
+			if strings.Contains(line, pkg) {
+				patterns[pkg] = true
+			}
+		}
+	}
 }
