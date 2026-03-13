@@ -19,6 +19,10 @@ func ForFormat(format string) Reporter {
 		return &JSONReporter{}
 	case "sarif":
 		return &SARIFReporter{}
+	case "cyclonedx":
+		return &CycloneDXReporter{}
+	case "openvex":
+		return &OpenVEXReporter{}
 	default:
 		return &TableReporter{}
 	}

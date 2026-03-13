@@ -47,11 +47,13 @@ Use --skip-deps to run AI analysis only.`,
 func init() {
 	rootCmd.AddCommand(scanCmd)
 
-	scanCmd.Flags().StringVarP(&scanOpts.Format, "format", "f", "table", "output format: table, json, sarif")
+	scanCmd.Flags().StringVarP(&scanOpts.Format, "format", "f", "table", "output format: table, json, sarif, cyclonedx, openvex")
 	scanCmd.Flags().StringVarP(&scanOpts.OutputFile, "output", "o", "", "write output to file (default: stdout)")
 	scanCmd.Flags().StringVarP((*string)(&scanOpts.SeverityFilter), "severity", "s", "", "minimum severity to report: critical, high, medium, low")
 	scanCmd.Flags().BoolVar(&scanOpts.SkipAI, "skip-ai", false, "skip AI-powered code analysis")
 	scanCmd.Flags().BoolVar(&scanOpts.SkipDeps, "skip-deps", false, "skip dependency vulnerability scanning")
+	scanCmd.Flags().BoolVar(&scanOpts.SkipSemgrep, "skip-semgrep", false, "skip Semgrep SAST analysis")
+	scanCmd.Flags().StringVar(&scanOpts.SemgrepRules, "semgrep-rules", "", "path to custom Semgrep rule directory")
 }
 
 func runScan(cmd *cobra.Command, args []string) error {

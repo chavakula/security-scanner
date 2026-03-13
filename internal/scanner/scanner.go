@@ -87,6 +87,13 @@ func (s *Scanner) Run(ctx context.Context) error {
 		result.Errors = append(result.Errors, errs...)
 	}
 
+	// Step 3a: Semgrep SAST analysis
+	if !s.opts.SkipSemgrep {
+		sgVulns, errs := s.scanSemgrep(ctx)
+		allVulns = append(allVulns, sgVulns...)
+		result.Errors = append(result.Errors, errs...)
+	}
+
 	// Step 3.5: AI enrichment layer — enrich ALL vulnerabilities with structured analysis
 	if !s.opts.SkipAI && s.cfg.OpenAIKey != "" && len(allVulns) > 0 {
 		if s.opts.Verbose {
@@ -151,6 +158,11 @@ func (s *Scanner) scanDependencies(ctx context.Context, files []detector.Detecte
 		if s.opts.Verbose {
 			fmt.Fprintf(os.Stderr, "   Parsed %d packages from %s\n", len(pkgs), f.Filename)
 		}
+	}
+
+	// Generate PURLs for all packages
+	for i := range allPackages {
+		allPackages[i].EnsurePURL()
 	}
 
 	if len(allPackages) == 0 {
@@ -231,6 +243,35 @@ func (s *Scanner) scanSourceCode(ctx context.Context) ([]models.Vulnerability, [
 
 	if s.opts.Verbose {
 		fmt.Fprintf(os.Stderr, "   Found %d issues via code analysis\n\n", len(vulns))
+	}
+
+	return vulns, errs
+}
+
+// scanSemgrep runs Semgrep CE SAST analysis on source files.
+func (s *Scanner) scanSemgrep(ctx context.Context) ([]models.Vulnerability, []string) {
+	var errs []string
+
+	sg := analyzer.NewSemgrepAnalyzer(s.opts.SemgrepRules, s.opts.Verbose)
+	if !sg.Available() {
+		if s.opts.Verbose {
+			fmt.Fprintf(os.Stderr, "Skipping Semgrep analysis (semgrep not installed)\n")
+		}
+		return nil, nil
+	}
+
+	if s.opts.Verbose {
+		fmt.Fprintf(os.Stderr, "Running Semgrep SAST analysis...\n")
+	}
+
+	vulns, err := sg.Analyze(ctx, s.opts.Path, s.opts.Verbose)
+	if err != nil {
+		errs = append(errs, fmt.Sprintf("semgrep analysis error: %v", err))
+		return nil, errs
+	}
+
+	if s.opts.Verbose {
+		fmt.Fprintf(os.Stderr, "   Found %d issues via Semgrep\n\n", len(vulns))
 	}
 
 	return vulns, errs

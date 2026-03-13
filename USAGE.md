@@ -23,11 +23,22 @@ A comprehensive reference for all commands, flags, configuration, and usage exam
   - [Verbose Mode](#2-verbose-mode)
   - [JSON Output](#3-json-output)
   - [SARIF Output](#4-sarif-output-for-github-code-scanning--vs-code)
-  - [Filter by Severity](#5-filter-by-severity)
-  - [Write to File](#6-write-output-to-file)
-  - [AI-Powered Code Analysis](#7-ai-powered-code-analysis)
-  - [AI-Only (Skip Dependencies)](#8-ai-only-scan-skip-dependency-checking)
-  - [Full Scan (Dependencies + AI)](#9-full-scan-dependencies--ai-code-analysis)
+  - [CycloneDX SBOM Output](#5-cyclonedx-sbom-output)
+  - [OpenVEX Output](#6-openvex-output)
+  - [Filter by Severity](#7-filter-by-severity)
+  - [Write to File](#8-write-output-to-file)
+  - [AI-Powered Code Analysis](#9-ai-powered-code-analysis)
+  - [AI-Only (Skip Dependencies)](#10-ai-only-scan-skip-dependency-checking)
+  - [Full Scan (Dependencies + AI)](#11-full-scan-dependencies--ai-code-analysis)
+- [Semgrep SAST Engine](#semgrep-sast-engine)
+  - [Setup](#setup)
+  - [Bundled Rule Packs](#bundled-rule-packs)
+  - [Custom Rules](#custom-rules)
+  - [Skipping Semgrep](#skipping-semgrep)
+- [Standards Support](#standards-support)
+  - [PURL (Package URL)](#purl-package-url)
+  - [CycloneDX v1.5](#cyclonedx-v15)
+  - [OpenVEX v0.2.0](#openvex-v020)
 - [AI Use Cases](#ai-use-cases)
   - [Detecting SQL Injection](#detecting-sql-injection)
   - [Finding Hardcoded Secrets](#finding-hardcoded-secrets)
@@ -166,11 +177,13 @@ security-scanner scan [path] [flags]
 
 | Flag | Short | Default | Description |
 |------|-------|---------|-------------|
-| `--format` | `-f` | `table` | Output format: `table`, `json`, `sarif` |
+| `--format` | `-f` | `table` | Output format: `table`, `json`, `sarif`, `cyclonedx`, `openvex` |
 | `--output` | `-o` | stdout | Write output to a file |
 | `--severity` | `-s` | (all) | Minimum severity filter: `critical`, `high`, `medium`, `low` |
 | `--skip-ai` | — | `false` | Skip AI code analysis (dependency scan only) |
 | `--skip-deps` | — | `false` | Skip dependency scan (code analysis only) |
+| `--skip-semgrep` | — | `false` | Skip Semgrep SAST analysis |
+| `--semgrep-rules` | — | (bundled) | Path to custom Semgrep rule directory |
 | `--verbose` | `-v` | `false` | Show detailed progress output |
 
 ---
@@ -401,7 +414,88 @@ security-scanner scan --format sarif --output results.sarif /path/to/project
 
 ---
 
-### 5. Filter by Severity
+### 5. CycloneDX SBOM Output
+
+Generate a CycloneDX v1.5 Software Bill of Materials with vulnerability data:
+
+```bash
+security-scanner scan --format cyclonedx --output sbom.json /path/to/project
+```
+
+**Example CycloneDX output:**
+
+```json
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.5",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2026-03-13T10:00:00Z",
+    "tools": [{ "vendor": "security-scanner", "name": "security-scanner", "version": "0.1.0" }]
+  },
+  "components": [
+    {
+      "type": "library",
+      "name": "lodash",
+      "version": "4.17.15",
+      "purl": "pkg:npm/lodash@4.17.15"
+    }
+  ],
+  "vulnerabilities": [
+    {
+      "id": "GHSA-xxxx-xxxx",
+      "ratings": [{ "severity": "high", "score": 7.5 }],
+      "description": "Prototype Pollution in lodash",
+      "recommendation": "Upgrade to 4.17.21",
+      "affects": [{ "ref": "pkg:npm/lodash@4.17.15" }]
+    }
+  ]
+}
+```
+
+CycloneDX output includes AI enrichment analysis when available (mapped to CycloneDX analysis states: `exploitable`, `false_positive`, `in_triage`).
+
+---
+
+### 6. OpenVEX Output
+
+Generate an OpenVEX v0.2.0 document for vulnerability exploitability exchange:
+
+```bash
+security-scanner scan --format openvex --output vex.json /path/to/project
+```
+
+**Example OpenVEX output:**
+
+```json
+{
+  "@context": "https://openvex.dev/ns/v0.2.0",
+  "@id": "https://security-scanner/vex/xxxxxxxx",
+  "author": "security-scanner",
+  "timestamp": "2026-03-13T10:00:00Z",
+  "statements": [
+    {
+      "vulnerability": { "@id": "https://osv.dev/vulnerability/GHSA-xxxx-xxxx", "name": "GHSA-xxxx-xxxx" },
+      "products": [{
+        "@id": "pkg:npm/lodash@4.17.15",
+        "subcomponents": [{ "@id": "pkg:npm/lodash@4.17.15" }]
+      }],
+      "status": "affected",
+      "action_statement": "Upgrade lodash from 4.17.15 to 4.17.21"
+    }
+  ]
+}
+```
+
+OpenVEX statuses are determined by AI enrichment confidence:
+- **HIGH confidence** → `affected`
+- **MEDIUM confidence** → `under_investigation`
+- **LOW confidence** → `not_affected` (with justification)
+- **No AI enrichment** → `affected` (default)
+
+---
+
+### 7. Filter by Severity
 
 Only show vulnerabilities at or above a given severity level:
 
@@ -418,7 +512,7 @@ security-scanner scan -s medium /path/to/project
 
 ---
 
-### 6. Write Output to File
+### 8. Write Output to File
 
 ```bash
 # Table output to file
@@ -429,11 +523,17 @@ security-scanner scan --format json --output report.json /path/to/project
 
 # SARIF to file
 security-scanner scan --format sarif --output results.sarif /path/to/project
+
+# CycloneDX SBOM to file
+security-scanner scan --format cyclonedx --output sbom.json /path/to/project
+
+# OpenVEX to file
+security-scanner scan --format openvex --output vex.json /path/to/project
 ```
 
 ---
 
-### 7. AI-Powered Code Analysis
+### 9. AI-Powered Code Analysis
 
 **Prerequisites:** Set your OpenAI API key first.
 
@@ -482,7 +582,7 @@ Summary: 4 total vulnerabilities
 
 ---
 
-### 8. AI-Only Scan (Skip Dependency Checking)
+### 10. AI-Only Scan (Skip Dependency Checking)
 
 Only run code analysis (pattern matching + AI):
 
@@ -492,7 +592,7 @@ security-scanner scan --skip-deps -v /path/to/project
 
 ---
 
-### 9. Full Scan (Dependencies + AI Code Analysis)
+### 11. Full Scan (Dependencies + AI Code Analysis)
 
 Run everything — dependencies against all CVE databases and AI code analysis:
 
@@ -505,6 +605,150 @@ security-scanner config set github-token ghp_xxxxxxxxxxxx
 # Full scan with all databases + AI
 security-scanner scan -v /path/to/project
 ```
+
+---
+
+## Semgrep SAST Engine
+
+The scanner integrates with [Semgrep CE](https://semgrep.dev/) (Community Edition) for static application security testing. Semgrep is automatically detected and used when available.
+
+### Setup
+
+```bash
+# Install Semgrep
+pip install semgrep
+
+# Verify installation
+semgrep --version
+```
+
+When Semgrep is not installed, the scanner gracefully skips SAST analysis and continues with dependency scanning and AI analysis.
+
+### Bundled Rule Packs
+
+The scanner ships with **30 security rules** in `rules/semgrep/`:
+
+**`owasp-top10.yaml`** — 18 rules covering OWASP Top 10:
+
+| Category | Languages | Rules |
+|----------|-----------|-------|
+| SQL Injection | Go, Python, Java, JS | Format string + concatenation patterns |
+| Command Injection | Go, Python, JS | `exec.Command`, `subprocess`, `child_process` |
+| Path Traversal | Go, Python | Unsanitized path joins |
+| Hardcoded Secrets | All | API keys, passwords, tokens in source |
+| Insecure TLS | Go, Python | `InsecureSkipVerify`, disabled cert checks |
+| Weak Crypto | Go, Python | MD5, SHA1, DES for security purposes |
+| XSS | Go, JS | Template injection, `innerHTML` |
+| Insecure Deserialization | Python, Java | `pickle.loads`, `ObjectInputStream` |
+| SSRF | Go, Python | Unvalidated URL from user input |
+
+**`language-specific.yaml`** — 12 language-specific rules:
+
+| Language | Rules |
+|----------|-------|
+| Go | `unsafe.Pointer`, `http.Client` without timeout, `defer` in loop |
+| Python | Flask debug mode, bind to `0.0.0.0`, `assert` for auth checks |
+| JavaScript/TypeScript | `eval()`, CORS wildcard `*`, JWT without verification |
+| Java | XXE-vulnerable XML parser, ECB mode encryption |
+
+### Custom Rules
+
+Point the scanner at your own Semgrep rule directory:
+
+```bash
+# Use only your custom rules
+security-scanner scan --semgrep-rules ./my-company-rules/ /path/to/project
+
+# Rules are standard Semgrep YAML format
+# See: https://semgrep.dev/docs/writing-rules/rule-syntax/
+```
+
+The scanner will also pick up any `.semgrep/` directory in the project root automatically.
+
+### Skipping Semgrep
+
+```bash
+# Skip Semgrep analysis entirely
+security-scanner scan --skip-semgrep /path/to/project
+```
+
+**Example output with Semgrep findings:**
+
+```
+🛡️ Semgrep SAST Findings (2 found)
+
+╭──────────┬─────────────────────┬────────────────┬──────┬────────────────────────────────────────╮
+│ SEVERITY │ ID                  │ FILE           │ LINE │ FINDING                                │
+├──────────┼─────────────────────┼────────────────┼──────┼────────────────────────────────────────┤
+│ CRITICAL │ SG-command-inject   │ handler.go     │   42 │ Command injection via exec.Command     │
+│ HIGH     │ SG-sql-injection    │ db/queries.py  │   15 │ SQL injection via string formatting     │
+╰──────────┴─────────────────────┴────────────────┴──────┴────────────────────────────────────────╯
+```
+
+---
+
+## Standards Support
+
+### PURL (Package URL)
+
+All packages are identified using standard [Package URLs](https://github.com/package-url/purl-spec). PURLs appear in JSON, CycloneDX, and OpenVEX output.
+
+**Format:** `pkg:<type>/<namespace>/<name>@<version>`
+
+| Ecosystem | PURL Type | Example |
+|-----------|-----------|---------|
+| Go | `golang` | `pkg:golang/github.com/hashicorp/vault@v1.15.2` |
+| npm | `npm` | `pkg:npm/@babel/helpers@7.15.4` |
+| npm (unscoped) | `npm` | `pkg:npm/ajv@6.12.6` |
+| PyPI | `pypi` | `pkg:pypi/requests@2.28.0` |
+| Maven | `maven` | `pkg:maven/org.apache.logging.log4j/log4j-core@2.17.0` |
+
+PURLs are auto-generated from package metadata and appear in:
+- JSON output: `package.purl` field
+- CycloneDX: `components[].purl` and `vulnerabilities[].affects[].ref`
+- OpenVEX: `statements[].products[].@id`
+
+### CycloneDX v1.5
+
+The CycloneDX output produces a complete SBOM/VDR (Software Bill of Materials / Vulnerability Disclosure Report):
+
+```bash
+security-scanner scan --format cyclonedx --output sbom.json /path/to/project
+```
+
+**Includes:**
+- **Metadata**: scan timestamp, tool information
+- **Components**: all detected packages with PURLs
+- **Vulnerabilities**: all findings with severity ratings, descriptions, fixed-in versions, advisories, and affected component references
+- **AI Analysis**: when enrichment is available, mapped to CycloneDX analysis states (`exploitable`, `false_positive`, `in_triage`)
+
+Compatible with tools that consume CycloneDX: [Dependency-Track](https://dependencytrack.org/), [OWASP DefectDojo](https://defectdojo.com/), [Grype](https://github.com/anchore/grype), etc.
+
+### OpenVEX v0.2.0
+
+The OpenVEX output produces a VEX document for communicating vulnerability exploitability:
+
+```bash
+security-scanner scan --format openvex --output vex.json /path/to/project
+```
+
+**Includes:**
+- **Context**: OpenVEX v0.2.0 namespace
+- **Statements**: one per vulnerability with product PURLs
+- **Status**: `affected`, `not_affected`, or `under_investigation`
+- **Justification**: AI-derived rationale for non-affected status
+- **Action**: remediation guidance (e.g., upgrade instructions)
+
+VEX status is derived from AI enrichment confidence:
+
+| AI Confidence | VEX Status | Meaning |
+|---------------|------------|---------|
+| HIGH | `affected` | Confirmed exploitable |
+| MEDIUM | `under_investigation` | Needs further review |
+| LOW | `not_affected` | Likely not exploitable (with justification) |
+| N/A | `affected` | Default when no AI enrichment |
+
+Compatible with the [OpenVEX](https://openvex.dev/) ecosystem and tools like [vexctl](https://github.com/openvex/vexctl).
 
 ---
 
@@ -686,12 +930,14 @@ security-scanner scan ./my-project --skip-ai
 
 ## Supported Ecosystems & Files
 
-| Ecosystem | Manifest Files Parsed |
-|-----------|----------------------|
-| **Go** | `go.mod` |
-| **Python** | `requirements.txt`, `Pipfile.lock`, `poetry.lock` |
-| **Node.js** | `package-lock.json`, `yarn.lock`, `pnpm-lock.yaml` |
-| **Java** | `pom.xml`, `build.gradle`, `build.gradle.kts` |
+| Ecosystem | Icon | PURL Type | Manifest Files Parsed |
+|-----------|------|-----------|----------------------|
+| **Go** | 🐹 | `golang` | `go.mod` |
+| **Python** | 🐍 | `pypi` | `requirements.txt`, `Pipfile.lock`, `poetry.lock` |
+| **Node.js** | 📗 | `npm` | `package-lock.json`, `yarn.lock`, `pnpm-lock.yaml` |
+| **Java** | ☕ | `maven` | `pom.xml`, `build.gradle`, `build.gradle.kts` |
+
+Table output groups vulnerabilities by ecosystem with icons for easy identification.
 
 **Source code analysis** scans files with these extensions:
 `.go`, `.py`, `.java`, `.js`, `.ts`, `.jsx`, `.tsx`, `.vue`, `.html`, `.yaml`, `.yml`, `.json`, `.env`, `.properties`

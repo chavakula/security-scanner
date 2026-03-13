@@ -72,6 +72,14 @@ func (r *TableReporter) Report(result *models.ScanResult, w io.Writer) error {
 		printEnrichmentDetails(w, codeVulns)
 	}
 
+	// Semgrep SAST findings
+	semgrepVulns := filterBySource(vulns, models.SourceSemgrep)
+	if len(semgrepVulns) > 0 {
+		fmt.Fprintf(w, "\n🛡️  Semgrep SAST Findings (%d found)\n\n", len(semgrepVulns))
+		printCodeTable(w, semgrepVulns, result.ProjectPath)
+		printEnrichmentDetails(w, semgrepVulns)
+	}
+
 	// Summary
 	fmt.Fprintln(w)
 	printSummary(w, vulns)
