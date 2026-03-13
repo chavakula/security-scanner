@@ -56,8 +56,8 @@ func (p *NpmLockParser) Parse(r io.Reader, filePath string) ([]models.Package, e
 // YarnLockParser parses yarn.lock files (v1 format).
 type YarnLockParser struct{}
 
-// yarnEntryRegex matches entries like: "package@^1.0.0":
-var yarnEntryRegex = regexp.MustCompile(`^"?([^@\s]+)@[^"]*"?:`)
+// yarnEntryRegex matches entries like: "package@^1.0.0": and "@scope/pkg@^1.0.0":
+var yarnEntryRegex = regexp.MustCompile(`^"?((?:@[^@/\s]+/)?[^@\s]+)@[^"]*"?:`)
 var yarnVersionRegex = regexp.MustCompile(`^\s+version\s+"?([^"\s]+)"?`)
 
 func (p *YarnLockParser) Parse(r io.Reader, filePath string) ([]models.Package, error) {

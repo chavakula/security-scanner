@@ -5,7 +5,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/security-scanner/security-scanner/internal/models"
@@ -51,14 +53,15 @@ type osvQueryResult struct {
 }
 
 type osvVuln struct {
-	ID         string         `json:"id"`
-	Summary    string         `json:"summary"`
-	Details    string         `json:"details"`
-	Aliases    []string       `json:"aliases"`
-	Severity   []osvSeverity  `json:"severity"`
-	Affected   []osvAffected  `json:"affected"`
-	References []osvReference `json:"references"`
-	Published  time.Time      `json:"published"`
+	ID               string                 `json:"id"`
+	Summary          string                 `json:"summary"`
+	Details          string                 `json:"details"`
+	Aliases          []string               `json:"aliases"`
+	Severity         []osvSeverity          `json:"severity"`
+	Affected         []osvAffected          `json:"affected"`
+	References       []osvReference         `json:"references"`
+	Published        time.Time              `json:"published"`
+	DatabaseSpecific map[string]interface{} `json:"database_specific"`
 }
 
 type osvSeverity struct {
@@ -67,8 +70,9 @@ type osvSeverity struct {
 }
 
 type osvAffected struct {
-	Package osvPackage `json:"package"`
-	Ranges  []osvRange `json:"ranges"`
+	Package    osvPackage    `json:"package"`
+	Ranges     []osvRange    `json:"ranges"`
+	Severities []osvSeverity `json:"severity"`
 }
 
 type osvRange struct {
@@ -165,27 +169,60 @@ func (m *OSVMatcher) queryBatch(ctx context.Context, packages []models.Package) 
 		return nil, fmt.Errorf("decode osv response: %w", err)
 	}
 
+	// The batch endpoint only returns vuln IDs. We need to fetch full details
+	// for each matched vulnerability individually.
 	var vulns []models.Vulnerability
+	seen := make(map[string]bool)
+
 	for i, result := range batchResp.Results {
 		if i >= len(packages) {
 			break
 		}
 		pkg := packages[i]
 
-		for _, v := range result.Vulns {
-			vuln := models.Vulnerability{
-				ID:          v.ID,
-				Aliases:     v.Aliases,
-				Summary:     v.Summary,
-				Details:     v.Details,
-				Severity:    parseSeverity(v.Severity),
-				Package:     pkg,
-				Source:      models.SourceOSV,
-				PublishedAt: v.Published,
+		// Skip packages with invalid names (e.g. parsing artifacts)
+		if pkg.Name == "" || pkg.Name == "\"" || len(pkg.Name) < 2 {
+			continue
+		}
+
+		for _, batchVuln := range result.Vulns {
+			// Deduplicate within the batch (same vuln can match multiple packages)
+			vulnKey := batchVuln.ID + "|" + pkg.Name
+			if seen[vulnKey] {
+				continue
+			}
+			seen[vulnKey] = true
+
+			// Fetch full vulnerability details
+			fullVuln, err := m.fetchVulnDetails(ctx, batchVuln.ID)
+			if err != nil {
+				// Fall back to minimal data from batch response
+				vulns = append(vulns, models.Vulnerability{
+					ID:      batchVuln.ID,
+					Aliases: batchVuln.Aliases,
+					Summary: batchVuln.Summary,
+					Package: pkg,
+					Source:  models.SourceOSV,
+				})
+				continue
 			}
 
-			// Extract fixed version
-			for _, affected := range v.Affected {
+			vuln := models.Vulnerability{
+				ID:          fullVuln.ID,
+				Aliases:     fullVuln.Aliases,
+				Summary:     fullVuln.Summary,
+				Details:     fullVuln.Details,
+				Severity:    parseSeverityWithFallback(fullVuln),
+				Package:     pkg,
+				Source:      models.SourceOSV,
+				PublishedAt: fullVuln.Published,
+			}
+
+			// Also extract CVSS score as a numeric value
+			vuln.Score = extractCVSSScore(fullVuln.Severity)
+
+			// Extract fixed version from affected ranges
+			for _, affected := range fullVuln.Affected {
 				for _, r := range affected.Ranges {
 					for _, event := range r.Events {
 						if event.Fixed != "" {
@@ -196,7 +233,7 @@ func (m *OSVMatcher) queryBatch(ctx context.Context, packages []models.Package) 
 			}
 
 			// Extract references
-			for _, ref := range v.References {
+			for _, ref := range fullVuln.References {
 				vuln.References = append(vuln.References, ref.URL)
 			}
 
@@ -207,20 +244,250 @@ func (m *OSVMatcher) queryBatch(ctx context.Context, packages []models.Package) 
 	return vulns, nil
 }
 
-// parseSeverity converts OSV severity to our Severity type.
+const osvVulnURL = "https://api.osv.dev/v1/vulns/"
+
+// fetchVulnDetails retrieves full vulnerability details from OSV by ID.
+func (m *OSVMatcher) fetchVulnDetails(ctx context.Context, id string) (*osvVuln, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, osvVulnURL+id, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := m.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("osv vuln api returned status %d for %s", resp.StatusCode, id)
+	}
+
+	var vuln osvVuln
+	if err := json.NewDecoder(resp.Body).Decode(&vuln); err != nil {
+		return nil, err
+	}
+
+	return &vuln, nil
+}
+
+// parseSeverity converts OSV severity entries to our Severity type.
 func parseSeverity(severities []osvSeverity) models.Severity {
 	for _, s := range severities {
 		if s.Type == "CVSS_V3" {
-			return cvssToSeverity(s.Score)
+			return cvssVectorToSeverity(s.Score)
+		}
+	}
+	// Try CVSS_V2 as fallback
+	for _, s := range severities {
+		if s.Type == "CVSS_V2" {
+			return cvssVectorToSeverity(s.Score)
 		}
 	}
 	return models.SeverityUnknown
 }
 
-// cvssToSeverity converts a CVSS v3 vector string to a severity level.
-func cvssToSeverity(score string) models.Severity {
-	// CVSS scores are in the vector string; for simplicity, map by prefix patterns
-	// A proper implementation would parse the full vector
-	// For now, return UNKNOWN and let the score be set from NVD or other sources
+// parseSeverityWithFallback tries CVSS vectors first, then falls back to
+// database_specific.severity which many GHSA entries use.
+func parseSeverityWithFallback(vuln *osvVuln) models.Severity {
+	sev := parseSeverity(vuln.Severity)
+	if sev != models.SeverityUnknown {
+		return sev
+	}
+
+	// Fall back to database_specific.severity (used by GitHub Advisory)
+	if vuln.DatabaseSpecific != nil {
+		if sevStr, ok := vuln.DatabaseSpecific["severity"].(string); ok {
+			switch strings.ToUpper(sevStr) {
+			case "CRITICAL":
+				return models.SeverityCritical
+			case "HIGH":
+				return models.SeverityHigh
+			case "MODERATE", "MEDIUM":
+				return models.SeverityMedium
+			case "LOW":
+				return models.SeverityLow
+			}
+		}
+	}
+
+	// Also check affected[].database_specific.severity
+	for _, aff := range vuln.Affected {
+		for _, sev := range aff.Severities {
+			if sev.Type == "CVSS_V3" {
+				return cvssVectorToSeverity(sev.Score)
+			}
+		}
+	}
+
 	return models.SeverityUnknown
+}
+
+// extractCVSSScore extracts the numeric CVSS base score from severity entries.
+func extractCVSSScore(severities []osvSeverity) float64 {
+	for _, s := range severities {
+		if s.Type == "CVSS_V3" {
+			return computeCVSS3BaseScore(s.Score)
+		}
+	}
+	return 0
+}
+
+// cvssVectorToSeverity converts a CVSS v3 vector string to a severity level.
+// Vector format: CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H
+func cvssVectorToSeverity(vector string) models.Severity {
+	score := computeCVSS3BaseScore(vector)
+	if score == 0 {
+		return models.SeverityUnknown
+	}
+	return scoreToSeverity(score)
+}
+
+// scoreToSeverity maps a numeric CVSS score to a severity level.
+func scoreToSeverity(score float64) models.Severity {
+	switch {
+	case score >= 9.0:
+		return models.SeverityCritical
+	case score >= 7.0:
+		return models.SeverityHigh
+	case score >= 4.0:
+		return models.SeverityMedium
+	case score > 0:
+		return models.SeverityLow
+	default:
+		return models.SeverityUnknown
+	}
+}
+
+// computeCVSS3BaseScore calculates the CVSS v3 base score from a vector string.
+// Implements the CVSS v3.1 specification for base score calculation.
+func computeCVSS3BaseScore(vector string) float64 {
+	parts := strings.Split(vector, "/")
+	if len(parts) < 2 {
+		return 0
+	}
+
+	metrics := make(map[string]string)
+	for _, part := range parts {
+		kv := strings.SplitN(part, ":", 2)
+		if len(kv) == 2 {
+			metrics[kv[0]] = kv[1]
+		}
+	}
+
+	// Attack Vector
+	var av float64
+	switch metrics["AV"] {
+	case "N":
+		av = 0.85
+	case "A":
+		av = 0.62
+	case "L":
+		av = 0.55
+	case "P":
+		av = 0.20
+	default:
+		return 0
+	}
+
+	// Attack Complexity
+	var ac float64
+	switch metrics["AC"] {
+	case "L":
+		ac = 0.77
+	case "H":
+		ac = 0.44
+	default:
+		return 0
+	}
+
+	// Privileges Required (depends on Scope)
+	scope := metrics["S"]
+	var pr float64
+	switch metrics["PR"] {
+	case "N":
+		pr = 0.85
+	case "L":
+		if scope == "C" {
+			pr = 0.68
+		} else {
+			pr = 0.62
+		}
+	case "H":
+		if scope == "C" {
+			pr = 0.50
+		} else {
+			pr = 0.27
+		}
+	default:
+		return 0
+	}
+
+	// User Interaction
+	var ui float64
+	switch metrics["UI"] {
+	case "N":
+		ui = 0.85
+	case "R":
+		ui = 0.62
+	default:
+		return 0
+	}
+
+	// Confidentiality, Integrity, Availability Impact
+	impactValue := func(val string) float64 {
+		switch val {
+		case "H":
+			return 0.56
+		case "L":
+			return 0.22
+		case "N":
+			return 0.0
+		default:
+			return -1
+		}
+	}
+
+	c := impactValue(metrics["C"])
+	i := impactValue(metrics["I"])
+	a := impactValue(metrics["A"])
+	if c < 0 || i < 0 || a < 0 {
+		return 0
+	}
+
+	// ISS = 1 - [(1 - Confidentiality) × (1 - Integrity) × (1 - Availability)]
+	iss := 1 - (1-c)*(1-i)*(1-a)
+
+	// Impact
+	var impact float64
+	if scope == "U" {
+		impact = 6.42 * iss
+	} else if scope == "C" {
+		impact = 7.52*(iss-0.029) - 3.25*math.Pow(iss-0.02, 15)
+	} else {
+		return 0
+	}
+
+	if impact <= 0 {
+		return 0
+	}
+
+	// Exploitability = 8.22 × AV × AC × PR × UI
+	exploitability := 8.22 * av * ac * pr * ui
+
+	// Base Score
+	var base float64
+	if scope == "U" {
+		base = math.Min(impact+exploitability, 10)
+	} else {
+		base = math.Min(1.08*(impact+exploitability), 10)
+	}
+
+	// Round up to one decimal place
+	return roundUp(base)
+}
+
+// roundUp rounds a float64 up to the nearest tenth per CVSS spec.
+func roundUp(val float64) float64 {
+	return math.Ceil(val*10) / 10
 }

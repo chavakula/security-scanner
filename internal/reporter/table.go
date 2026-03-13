@@ -38,8 +38,29 @@ func (r *TableReporter) Report(result *models.ScanResult, w io.Writer) error {
 	// Dependency vulnerabilities table
 	depVulns := filterBySource(vulns, models.SourceOSV, models.SourceNVD, models.SourceGitHubAdv)
 	if len(depVulns) > 0 {
-		fmt.Fprintf(w, "📦 Dependency Vulnerabilities (%d found)\n\n", len(depVulns))
-		printDepTable(w, depVulns)
+		fmt.Fprintf(w, "📦 Dependency Vulnerabilities (%d found)\n", len(depVulns))
+
+		// Group by ecosystem and print separate tables
+		ecoGroups := groupByEcosystem(depVulns)
+		ecoOrder := []models.Ecosystem{models.EcosystemGo, models.EcosystemNpm, models.EcosystemPyPI, models.EcosystemMaven}
+		for _, eco := range ecoOrder {
+			group := ecoGroups[eco]
+			if len(group) == 0 {
+				continue
+			}
+			fmt.Fprintf(w, "\n  %s %s (%d)\n\n", ecosystemIcon(eco), eco, len(group))
+			printDepTable(w, group)
+		}
+		// Any remaining ecosystems not in the predefined order
+		for eco, group := range ecoGroups {
+			if eco == models.EcosystemGo || eco == models.EcosystemNpm || eco == models.EcosystemPyPI || eco == models.EcosystemMaven {
+				continue
+			}
+			if len(group) > 0 {
+				fmt.Fprintf(w, "\n  📦 %s (%d)\n\n", eco, len(group))
+				printDepTable(w, group)
+			}
+		}
 		printEnrichmentDetails(w, depVulns)
 	}
 
@@ -125,8 +146,12 @@ func printCodeTable(w io.Writer, vulns []models.Vulnerability, projectPath strin
 
 func printSummary(w io.Writer, vulns []models.Vulnerability) {
 	counts := map[models.Severity]int{}
+	ecoCounts := map[models.Ecosystem]int{}
 	for _, v := range vulns {
 		counts[v.Severity]++
+		if v.Package.Ecosystem != "" {
+			ecoCounts[v.Package.Ecosystem]++
+		}
 	}
 
 	fmt.Fprintf(w, "Summary: %d total vulnerabilities\n", len(vulns))
@@ -144,6 +169,23 @@ func printSummary(w io.Writer, vulns []models.Vulnerability) {
 	}
 	if c := counts[models.SeverityUnknown]; c > 0 {
 		fmt.Fprintf(w, "  ⚪ Unknown:  %d\n", c)
+	}
+
+	if len(ecoCounts) > 1 {
+		fmt.Fprintln(w)
+		fmt.Fprintf(w, "By ecosystem:\n")
+		ecoOrder := []models.Ecosystem{models.EcosystemGo, models.EcosystemNpm, models.EcosystemPyPI, models.EcosystemMaven}
+		for _, eco := range ecoOrder {
+			if c := ecoCounts[eco]; c > 0 {
+				fmt.Fprintf(w, "  %s %s: %d\n", ecosystemIcon(eco), eco, c)
+			}
+		}
+		for eco, c := range ecoCounts {
+			if eco == models.EcosystemGo || eco == models.EcosystemNpm || eco == models.EcosystemPyPI || eco == models.EcosystemMaven {
+				continue
+			}
+			fmt.Fprintf(w, "  📦 %s: %d\n", eco, c)
+		}
 	}
 }
 
@@ -182,6 +224,29 @@ func printEnrichmentDetails(w io.Writer, vulns []models.Vulnerability) {
 		}
 	}
 	fmt.Fprintln(w)
+}
+
+func groupByEcosystem(vulns []models.Vulnerability) map[models.Ecosystem][]models.Vulnerability {
+	groups := make(map[models.Ecosystem][]models.Vulnerability)
+	for _, v := range vulns {
+		groups[v.Package.Ecosystem] = append(groups[v.Package.Ecosystem], v)
+	}
+	return groups
+}
+
+func ecosystemIcon(eco models.Ecosystem) string {
+	switch eco {
+	case models.EcosystemGo:
+		return "🐹"
+	case models.EcosystemNpm:
+		return "📗"
+	case models.EcosystemPyPI:
+		return "🐍"
+	case models.EcosystemMaven:
+		return "☕"
+	default:
+		return "📦"
+	}
 }
 
 func filterBySource(vulns []models.Vulnerability, sources ...models.VulnerabilitySource) []models.Vulnerability {
