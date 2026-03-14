@@ -1,4 +1,4 @@
-# Security Scanner — Complete Usage Guide
+# Calvigil — Complete Usage Guide
 
 A comprehensive reference for all commands, flags, configuration, and usage examples including AI-powered analysis.
 
@@ -71,16 +71,16 @@ A comprehensive reference for all commands, flags, configuration, and usage exam
 ### From Source
 
 ```bash
-git clone https://github.com/security-scanner/security-scanner.git
-cd security-scanner
+git clone https://github.com/calvigil/calvigil.git
+cd calvigil
 make build
-# binary is at ./bin/security-scanner
+# binary is at ./bin/calvigil
 ```
 
 ### Go Install
 
 ```bash
-go install github.com/security-scanner/security-scanner@latest
+go install github.com/calvigil/calvigil@latest
 ```
 
 ---
@@ -89,7 +89,7 @@ go install github.com/security-scanner/security-scanner@latest
 
 ### Config File
 
-Configuration is stored in `~/.security-scanner.json`:
+Configuration is stored in `~/.calvigil.json`:
 
 ```json
 {
@@ -124,7 +124,7 @@ export NVD_API_KEY="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
 export GITHUB_TOKEN="ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 
 # Now run scans — keys are picked up automatically
-security-scanner scan /path/to/project
+calvigil scan /path/to/project
 ```
 
 ### Setting API Keys
@@ -133,31 +133,31 @@ Use `config set` to persist keys to the config file:
 
 ```bash
 # Required for AI-powered code analysis
-security-scanner config set openai-key sk-proj-abc123def456...
+calvigil config set openai-key sk-proj-abc123def456...
 
 # Choose a specific OpenAI model
-security-scanner config set openai-model gpt-4-turbo
+calvigil config set openai-model gpt-4-turbo
 
 # Optional: NVD key gives higher rate limits (50 req/30s vs 5 req/30s)
 # Get one free at: https://nvd.nist.gov/developers/request-an-api-key
-security-scanner config set nvd-key xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+calvigil config set nvd-key xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 
 # Optional: GitHub token for advisory database access
 # Create at: https://github.com/settings/tokens
-security-scanner config set github-token ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+calvigil config set github-token ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```
 
 ### Viewing Configuration
 
 ```bash
 # View a specific key (secrets are masked)
-security-scanner config get openai-key
+calvigil config get openai-key
 # Output: ****abc1
 
-security-scanner config get openai-model
+calvigil config get openai-model
 # Output: gpt-4-turbo
 
-security-scanner config get nvd-key
+calvigil config get nvd-key
 # Output: ****xxxx
 ```
 
@@ -181,7 +181,7 @@ security-scanner config get nvd-key
 Scan a project directory for vulnerabilities.
 
 ```
-security-scanner scan [path] [flags]
+calvigil scan [path] [flags]
 ```
 
 **Arguments:**
@@ -213,7 +213,7 @@ security-scanner scan [path] [flags]
 Scan a container image for vulnerabilities. Requires [syft](https://github.com/anchore/syft).
 
 ```
-security-scanner scan-image <image> [flags]
+calvigil scan-image <image> [flags]
 ```
 
 **Arguments:**
@@ -238,18 +238,18 @@ security-scanner scan-image <image> [flags]
 Set a configuration value.
 
 ```
-security-scanner config set <key> <value>
+calvigil config set <key> <value>
 ```
 
 **Examples:**
 
 ```bash
-security-scanner config set openai-key sk-proj-abc123...
-security-scanner config set openai-model gpt-4o
-security-scanner config set nvd-key xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-security-scanner config set github-token ghp_xxxxxxxxxxxx
-security-scanner config set ollama-url http://localhost:11434
-security-scanner config set ollama-model llama3
+calvigil config set openai-key sk-proj-abc123...
+calvigil config set openai-model gpt-4o
+calvigil config set nvd-key xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+calvigil config set github-token ghp_xxxxxxxxxxxx
+calvigil config set ollama-url http://localhost:11434
+calvigil config set ollama-model llama3
 ```
 
 ---
@@ -259,16 +259,16 @@ security-scanner config set ollama-model llama3
 Get a configuration value (secrets are masked).
 
 ```
-security-scanner config get <key>
+calvigil config get <key>
 ```
 
 **Examples:**
 
 ```bash
-security-scanner config get openai-model
+calvigil config get openai-model
 # Output: gpt-4o
 
-security-scanner config get openai-key
+calvigil config get openai-key
 # Output: ****23...
 ```
 
@@ -279,8 +279,8 @@ security-scanner config get openai-key
 Print the version.
 
 ```bash
-security-scanner version
-# Output: security-scanner v0.1.0 (built with go1.26.0)
+calvigil version
+# Output: calvigil v0.1.0 (built with go1.26.0)
 ```
 
 ---
@@ -292,13 +292,13 @@ security-scanner version
 Scan a Node.js project's dependencies against the OSV database:
 
 ```bash
-security-scanner scan --skip-ai /path/to/node-project
+calvigil scan --skip-ai /path/to/node-project
 ```
 
 **Example output:**
 
 ```
-🔍 Security Scan Results for /path/to/node-project
+🔍 Calvigil Scan Results for /path/to/node-project
    Scanned 142 packages across 1 ecosystems in 2.3s
 
 📦 Dependency Vulnerabilities (3 found)
@@ -324,7 +324,7 @@ Summary: 3 total vulnerabilities
 See detailed progress during scanning:
 
 ```bash
-security-scanner scan --skip-ai -v /path/to/go-project
+calvigil scan --skip-ai -v /path/to/go-project
 ```
 
 **Example output:**
@@ -356,7 +356,7 @@ security-scanner scan --skip-ai -v /path/to/go-project
 Get machine-readable JSON output for scripting and pipelines:
 
 ```bash
-security-scanner scan --skip-ai --format json /path/to/project
+calvigil scan --skip-ai --format json /path/to/project
 ```
 
 **Example output:**
@@ -393,13 +393,13 @@ security-scanner scan --skip-ai --format json /path/to/project
 
 ```bash
 # Count critical vulnerabilities
-security-scanner scan --skip-ai --format json . | jq '[.vulnerabilities[] | select(.severity == "CRITICAL")] | length'
+calvigil scan --skip-ai --format json . | jq '[.vulnerabilities[] | select(.severity == "CRITICAL")] | length'
 
 # List all affected packages
-security-scanner scan --skip-ai --format json . | jq '.vulnerabilities[].package.name'
+calvigil scan --skip-ai --format json . | jq '.vulnerabilities[].package.name'
 
 # Get only package names with fixes available
-security-scanner scan --skip-ai --format json . | jq '.vulnerabilities[] | select(.fixed_in != "") | {package: .package.name, current: .package.version, fix: .fixed_in}'
+calvigil scan --skip-ai --format json . | jq '.vulnerabilities[] | select(.fixed_in != "") | {package: .package.name, current: .package.version, fix: .fixed_in}'
 ```
 
 ---
@@ -410,7 +410,7 @@ Generate SARIF v2.1.0 output for integration with GitHub Code Scanning or VS Cod
 
 ```bash
 # Write SARIF to file
-security-scanner scan --format sarif --output results.sarif /path/to/project
+calvigil scan --format sarif --output results.sarif /path/to/project
 ```
 
 **Upload to GitHub Code Scanning:**
@@ -418,7 +418,7 @@ security-scanner scan --format sarif --output results.sarif /path/to/project
 ```bash
 # In a GitHub Actions workflow:
 - name: Run security scan
-  run: security-scanner scan --format sarif --output results.sarif --skip-ai .
+  run: calvigil scan --format sarif --output results.sarif --skip-ai .
 
 - name: Upload SARIF
   uses: github/codeql-action/upload-sarif@v3
@@ -435,7 +435,7 @@ security-scanner scan --format sarif --output results.sarif /path/to/project
   "runs": [{
     "tool": {
       "driver": {
-        "name": "security-scanner",
+        "name": "calvigil",
         "version": "0.1.0",
         "rules": [{
           "id": "SEC-005",
@@ -466,7 +466,7 @@ security-scanner scan --format sarif --output results.sarif /path/to/project
 Generate a CycloneDX v1.5 Software Bill of Materials with vulnerability data:
 
 ```bash
-security-scanner scan --format cyclonedx --output sbom.json /path/to/project
+calvigil scan --format cyclonedx --output sbom.json /path/to/project
 ```
 
 **Example CycloneDX output:**
@@ -478,7 +478,7 @@ security-scanner scan --format cyclonedx --output sbom.json /path/to/project
   "version": 1,
   "metadata": {
     "timestamp": "2026-03-13T10:00:00Z",
-    "tools": [{ "vendor": "security-scanner", "name": "security-scanner", "version": "0.1.0" }]
+    "tools": [{ "vendor": "calvigil", "name": "calvigil", "version": "0.1.0" }]
   },
   "components": [
     {
@@ -509,7 +509,7 @@ CycloneDX output includes AI enrichment analysis when available (mapped to Cyclo
 Generate an OpenVEX v0.2.0 document for vulnerability exploitability exchange:
 
 ```bash
-security-scanner scan --format openvex --output vex.json /path/to/project
+calvigil scan --format openvex --output vex.json /path/to/project
 ```
 
 **Example OpenVEX output:**
@@ -517,8 +517,8 @@ security-scanner scan --format openvex --output vex.json /path/to/project
 ```json
 {
   "@context": "https://openvex.dev/ns/v0.2.0",
-  "@id": "https://security-scanner/vex/xxxxxxxx",
-  "author": "security-scanner",
+  "@id": "https://calvigil/vex/xxxxxxxx",
+  "author": "calvigil",
   "timestamp": "2026-03-13T10:00:00Z",
   "statements": [
     {
@@ -547,7 +547,7 @@ OpenVEX statuses are determined by AI enrichment confidence:
 Generate a professional, self-contained HTML report with severity charts, color-coded badges, and AI enrichment details. Ideal for sharing with management, MIS teams, or non-technical stakeholders:
 
 ```bash
-security-scanner scan --format html --output report.html /path/to/project
+calvigil scan --format html --output report.html /path/to/project
 ```
 
 The HTML report includes:
@@ -573,11 +573,11 @@ brew install --cask chromium         # macOS (Chromium)
 apt-get install chromium-browser     # Debian/Ubuntu
 
 # Generate PDF
-security-scanner scan --format pdf --output report.pdf /path/to/project
+calvigil scan --format pdf --output report.pdf /path/to/project
 
 # Or point to a custom Chrome binary
 export CHROME_PATH=/usr/bin/chromium
-security-scanner scan --format pdf --output report.pdf /path/to/project
+calvigil scan --format pdf --output report.pdf /path/to/project
 ```
 
 The PDF uses Chrome's print engine for pixel-perfect rendering of CSS grid, flexbox, and media queries. It contains the same content as the HTML report.
@@ -590,13 +590,13 @@ Only show vulnerabilities at or above a given severity level:
 
 ```bash
 # Only critical
-security-scanner scan --severity critical /path/to/project
+calvigil scan --severity critical /path/to/project
 
 # High and above (high + critical)
-security-scanner scan --severity high /path/to/project
+calvigil scan --severity high /path/to/project
 
 # Medium and above
-security-scanner scan -s medium /path/to/project
+calvigil scan -s medium /path/to/project
 ```
 
 ---
@@ -605,25 +605,25 @@ security-scanner scan -s medium /path/to/project
 
 ```bash
 # Table output to file
-security-scanner scan --output report.txt /path/to/project
+calvigil scan --output report.txt /path/to/project
 
 # JSON to file
-security-scanner scan --format json --output report.json /path/to/project
+calvigil scan --format json --output report.json /path/to/project
 
 # SARIF to file
-security-scanner scan --format sarif --output results.sarif /path/to/project
+calvigil scan --format sarif --output results.sarif /path/to/project
 
 # CycloneDX SBOM to file
-security-scanner scan --format cyclonedx --output sbom.json /path/to/project
+calvigil scan --format cyclonedx --output sbom.json /path/to/project
 
 # OpenVEX to file
-security-scanner scan --format openvex --output vex.json /path/to/project
+calvigil scan --format openvex --output vex.json /path/to/project
 
 # HTML report
-security-scanner scan --format html --output report.html /path/to/project
+calvigil scan --format html --output report.html /path/to/project
 
 # PDF report (requires Chrome or Chromium)
-security-scanner scan --format pdf --output report.pdf /path/to/project
+calvigil scan --format pdf --output report.pdf /path/to/project
 ```
 
 ---
@@ -634,7 +634,7 @@ security-scanner scan --format pdf --output report.pdf /path/to/project
 
 ```bash
 # Set key (one-time)
-security-scanner config set openai-key sk-proj-abc123def456...
+calvigil config set openai-key sk-proj-abc123def456...
 
 # Or use environment variable
 export OPENAI_API_KEY="sk-proj-abc123def456..."
@@ -643,13 +643,13 @@ export OPENAI_API_KEY="sk-proj-abc123def456..."
 **Run a full scan (dependencies + AI):**
 
 ```bash
-security-scanner scan -v /path/to/project
+calvigil scan -v /path/to/project
 ```
 
 **Example output with AI findings:**
 
 ```
-🔍 Security Scan Results for /path/to/project
+🔍 Calvigil Scan Results for /path/to/project
    Scanned 28 packages across 2 ecosystems in 12.4s
 
 📦 Dependency Vulnerabilities (1 found)
@@ -682,7 +682,7 @@ Summary: 4 total vulnerabilities
 Only run code analysis (pattern matching + AI):
 
 ```bash
-security-scanner scan --skip-deps -v /path/to/project
+calvigil scan --skip-deps -v /path/to/project
 ```
 
 ---
@@ -693,12 +693,12 @@ Run everything — dependencies against all CVE databases and AI code analysis:
 
 ```bash
 # Set up all keys for maximum coverage
-security-scanner config set openai-key sk-proj-...
-security-scanner config set nvd-key xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-security-scanner config set github-token ghp_xxxxxxxxxxxx
+calvigil config set openai-key sk-proj-...
+calvigil config set nvd-key xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+calvigil config set github-token ghp_xxxxxxxxxxxx
 
 # Full scan with all databases + AI
-security-scanner scan -v /path/to/project
+calvigil scan -v /path/to/project
 ```
 
 ---
@@ -752,7 +752,7 @@ Point the scanner at your own Semgrep rule directory:
 
 ```bash
 # Use only your custom rules
-security-scanner scan --semgrep-rules ./my-company-rules/ /path/to/project
+calvigil scan --semgrep-rules ./my-company-rules/ /path/to/project
 
 # Rules are standard Semgrep YAML format
 # See: https://semgrep.dev/docs/writing-rules/rule-syntax/
@@ -764,7 +764,7 @@ The scanner will also pick up any `.semgrep/` directory in the project root auto
 
 ```bash
 # Skip Semgrep analysis entirely
-security-scanner scan --skip-semgrep /path/to/project
+calvigil scan --skip-semgrep /path/to/project
 ```
 
 **Example output with Semgrep findings:**
@@ -808,7 +808,7 @@ PURLs are auto-generated from package metadata and appear in:
 The CycloneDX output produces a complete SBOM/VDR (Software Bill of Materials / Vulnerability Disclosure Report):
 
 ```bash
-security-scanner scan --format cyclonedx --output sbom.json /path/to/project
+calvigil scan --format cyclonedx --output sbom.json /path/to/project
 ```
 
 **Includes:**
@@ -824,7 +824,7 @@ Compatible with tools that consume CycloneDX: [Dependency-Track](https://depende
 The OpenVEX output produces a VEX document for communicating vulnerability exploitability:
 
 ```bash
-security-scanner scan --format openvex --output vex.json /path/to/project
+calvigil scan --format openvex --output vex.json /path/to/project
 ```
 
 **Includes:**
@@ -1018,7 +1018,7 @@ When an OpenAI API key is configured, the scanner automatically enriches **all**
 To skip AI enrichment (e.g., for faster scans), use `--skip-ai`:
 
 ```bash
-security-scanner scan ./my-project --skip-ai
+calvigil scan ./my-project --skip-ai
 ```
 
 ---
@@ -1046,7 +1046,7 @@ ollama pull codellama      # code-focused
 ollama pull mistral        # fast and capable
 
 # 4. Configure the scanner
-security-scanner config set ollama-model llama3
+calvigil config set ollama-model llama3
 # or via environment variable:
 export OLLAMA_MODEL=llama3
 ```
@@ -1063,16 +1063,16 @@ The `--provider` flag controls which AI backend is used:
 
 ```bash
 # Auto-detect (default) — Ollama first, then OpenAI
-security-scanner scan
+calvigil scan
 
 # Force Ollama
-security-scanner scan --provider ollama --ollama-model llama3
+calvigil scan --provider ollama --ollama-model llama3
 
 # Force OpenAI
-security-scanner scan --provider openai
+calvigil scan --provider openai
 
 # Use a remote Ollama server
-security-scanner scan --provider ollama \
+calvigil scan --provider ollama \
   --ollama-url http://gpu-server:11434 \
   --ollama-model codellama
 ```
@@ -1082,12 +1082,12 @@ security-scanner scan --provider ollama \
 Configuration priority (highest to lowest):
 1. CLI flags (`--ollama-url`, `--ollama-model`)
 2. Environment variables (`OLLAMA_URL`, `OLLAMA_MODEL`)
-3. Config file (`~/.security-scanner.json`)
+3. Config file (`~/.calvigil.json`)
 
 ```bash
 # Persist Ollama settings
-security-scanner config set ollama-url http://localhost:11434
-security-scanner config set ollama-model llama3
+calvigil config set ollama-url http://localhost:11434
+calvigil config set ollama-model llama3
 
 # Or use environment variables
 export OLLAMA_URL=http://localhost:11434
@@ -1118,28 +1118,28 @@ curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -
 
 ```bash
 # Scan a Docker Hub image
-security-scanner scan-image nginx:latest
+calvigil scan-image nginx:latest
 
 # Scan with verbose output
-security-scanner scan-image python:3.12-slim -v
+calvigil scan-image python:3.12-slim -v
 
 # Output as JSON
-security-scanner scan-image node:20 --format json
+calvigil scan-image node:20 --format json
 
 # Output as SARIF for CI integration
-security-scanner scan-image ubuntu:22.04 --format sarif --output results.sarif
+calvigil scan-image ubuntu:22.04 --format sarif --output results.sarif
 
 # Output as CycloneDX SBOM
-security-scanner scan-image alpine:3.18 --format cyclonedx --output sbom.json
+calvigil scan-image alpine:3.18 --format cyclonedx --output sbom.json
 
 # Filter by severity
-security-scanner scan-image python:3.12 --severity high
+calvigil scan-image python:3.12 --severity high
 
 # Scan a local Docker archive
-security-scanner scan-image docker-archive:myapp.tar
+calvigil scan-image docker-archive:myapp.tar
 
 # Scan an extracted root filesystem
-security-scanner scan-image dir:/path/to/rootfs
+calvigil scan-image dir:/path/to/rootfs
 ```
 
 ### Image Supported Ecosystems

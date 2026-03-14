@@ -9,7 +9,7 @@ import (
 
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
-	"github.com/security-scanner/security-scanner/internal/models"
+	"github.com/calvigil/calvigil/internal/models"
 )
 
 // TableReporter outputs scan results as a formatted terminal table.
@@ -31,7 +31,7 @@ func (r *TableReporter) Report(result *models.ScanResult, w io.Writer) error {
 	})
 
 	// Print header
-	fmt.Fprintf(w, "\n🔍 Security Scan Results for %s\n", result.ProjectPath)
+	fmt.Fprintf(w, "\n🔍 Calvigil Scan Results for %s\n", result.ProjectPath)
 	fmt.Fprintf(w, "   Scanned %d packages across %d ecosystems in %s\n\n",
 		result.TotalPackages, len(result.Ecosystems), result.Duration.Round(1e8))
 

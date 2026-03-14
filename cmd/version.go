@@ -11,13 +11,13 @@ var version = "dev"
 
 var versionCmd = &cobra.Command{
 	Use:   "version",
-	Short: "Print the version of security-scanner",
+	Short: "Print the version of calvigil",
 	Run: func(cmd *cobra.Command, args []string) {
 		goVersion := "unknown"
 		if info, ok := debug.ReadBuildInfo(); ok {
 			goVersion = info.GoVersion
 		}
-		fmt.Fprintf(cmd.OutOrStdout(), "security-scanner %s (built with %s)\n", version, goVersion)
+		fmt.Fprintf(cmd.OutOrStdout(), "calvigil %s (built with %s)\n", version, goVersion)
 	},
 }
 

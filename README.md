@@ -1,4 +1,4 @@
-# security-scanner
+# calvigil
 
 An open-source, AI-powered vulnerability scanner CLI for **Go**, **Java**, **Python**, and **Node.js** projects.
 
@@ -52,114 +52,114 @@ An open-source, AI-powered vulnerability scanner CLI for **Go**, **Java**, **Pyt
 ### From Source
 
 ```bash
-git clone https://github.com/security-scanner/security-scanner.git
-cd security-scanner
+git clone https://github.com/calvigil/calvigil.git
+cd calvigil
 make build
 ```
 
-The binary will be at `./bin/security-scanner`.
+The binary will be at `./bin/calvigil`.
 
 ### Go Install
 
 ```bash
-go install github.com/security-scanner/security-scanner@latest
+go install github.com/calvigil/calvigil@latest
 ```
 
 ## Quick Start
 
 ```bash
 # Scan current directory (dependency scan only — no API key needed)
-security-scanner scan --skip-ai
+calvigil scan --skip-ai
 
 # Scan a specific project
-security-scanner scan /path/to/project
+calvigil scan /path/to/project
 
 # Full scan with AI analysis (requires OpenAI API key)
-security-scanner config set openai-key sk-...
-security-scanner scan
+calvigil config set openai-key sk-...
+calvigil scan
 
 # Use local Ollama model (no API key needed)
-security-scanner scan --provider ollama --ollama-model llama3
+calvigil scan --provider ollama --ollama-model llama3
 
 # Auto-detect: uses Ollama if reachable, otherwise OpenAI
-security-scanner scan --provider auto
+calvigil scan --provider auto
 
 # Scan a container image for vulnerabilities (requires syft)
-security-scanner scan-image nginx:latest
-security-scanner scan-image python:3.12-slim --format json
+calvigil scan-image nginx:latest
+calvigil scan-image python:3.12-slim --format json
 
 # Output as JSON
-security-scanner scan --format json
+calvigil scan --format json
 
 # Output as SARIF (for GitHub Code Scanning, VS Code, etc.)
-security-scanner scan --format sarif --output results.sarif
+calvigil scan --format sarif --output results.sarif
 
 # Output as CycloneDX SBOM
-security-scanner scan --format cyclonedx --output sbom.json
+calvigil scan --format cyclonedx --output sbom.json
 
 # Output as OpenVEX
-security-scanner scan --format openvex --output vex.json
+calvigil scan --format openvex --output vex.json
 
 # Executive-friendly HTML report
-security-scanner scan --format html --output report.html
+calvigil scan --format html --output report.html
 
 # PDF report (requires Chrome or Chromium)
-security-scanner scan --format pdf --output report.pdf
+calvigil scan --format pdf --output report.pdf
 
 # Run with custom Semgrep rules
-security-scanner scan --semgrep-rules ./my-rules/
+calvigil scan --semgrep-rules ./my-rules/
 
 # Skip Semgrep SAST analysis
-security-scanner scan --skip-semgrep
+calvigil scan --skip-semgrep
 
 # Only show high and critical vulnerabilities
-security-scanner scan --severity high
+calvigil scan --severity high
 
 # Verbose output
-security-scanner scan -v
+calvigil scan -v
 ```
 
 ## Configuration
 
-Configuration is stored in `~/.security-scanner.json`. Environment variables take precedence.
+Configuration is stored in `~/.calvigil.json`. Environment variables take precedence.
 
 ### API Keys
 
 ```bash
 # OpenAI (required for AI code analysis with OpenAI provider)
-security-scanner config set openai-key sk-...
+calvigil config set openai-key sk-...
 # or: export OPENAI_API_KEY=sk-...
 
 # OpenAI model (default: gpt-4)
-security-scanner config set openai-model gpt-4-turbo
+calvigil config set openai-model gpt-4-turbo
 
 # Ollama URL (default: http://localhost:11434)
-security-scanner config set ollama-url http://localhost:11434
+calvigil config set ollama-url http://localhost:11434
 # or: export OLLAMA_URL=http://localhost:11434
 
 # Ollama model (e.g. llama3, codellama, mistral)
-security-scanner config set ollama-model llama3
+calvigil config set ollama-model llama3
 # or: export OLLAMA_MODEL=llama3
 
 # NVD API key (optional, increases rate limits)
-security-scanner config set nvd-key xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+calvigil config set nvd-key xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 # or: export NVD_API_KEY=...
 
 # GitHub token (optional, for GitHub Advisory Database)
-security-scanner config set github-token ghp_...
+calvigil config set github-token ghp_...
 # or: export GITHUB_TOKEN=...
 ```
 
 ### View Configuration
 
 ```bash
-security-scanner config get openai-model
+calvigil config get openai-model
 ```
 
 ## CLI Reference
 
 ```
-security-scanner [command]
+calvigil [command]
 
 Available Commands:
   scan        Scan a project for security vulnerabilities
@@ -235,13 +235,13 @@ The scanner integrates with [Semgrep CE](https://semgrep.dev/) for static applic
 pip install semgrep
 
 # Scan with bundled rule packs (OWASP Top 10 + language-specific)
-security-scanner scan /path/to/project
+calvigil scan /path/to/project
 
 # Scan with your own custom rules
-security-scanner scan --semgrep-rules ./my-rules/ /path/to/project
+calvigil scan --semgrep-rules ./my-rules/ /path/to/project
 
 # Skip Semgrep entirely
-security-scanner scan --skip-semgrep /path/to/project
+calvigil scan --skip-semgrep /path/to/project
 ```
 
 **Bundled rule packs** (in `rules/semgrep/`):
@@ -280,13 +280,13 @@ Run AI-powered analysis entirely offline using [Ollama](https://ollama.ai/) with
 ollama pull llama3
 
 # Scan with Ollama
-security-scanner scan --provider ollama --ollama-model llama3
+calvigil scan --provider ollama --ollama-model llama3
 
 # Use a remote Ollama server
-security-scanner scan --provider ollama --ollama-url http://gpu-server:11434 --ollama-model codellama
+calvigil scan --provider ollama --ollama-url http://gpu-server:11434 --ollama-model codellama
 
 # Auto mode (default): uses Ollama if reachable, otherwise OpenAI
-security-scanner scan
+calvigil scan
 ```
 
 **Provider selection (`--provider`)**:
@@ -304,18 +304,18 @@ brew install syft  # macOS
 # or: curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh
 
 # Scan a Docker image
-security-scanner scan-image nginx:latest
+calvigil scan-image nginx:latest
 
 # Scan with a specific output format
-security-scanner scan-image python:3.12-slim --format json
-security-scanner scan-image node:20 --format sarif --output results.sarif
+calvigil scan-image python:3.12-slim --format json
+calvigil scan-image node:20 --format sarif --output results.sarif
 
 # Scan local archives or directories
-security-scanner scan-image docker-archive:image.tar
-security-scanner scan-image dir:/path/to/rootfs
+calvigil scan-image docker-archive:image.tar
+calvigil scan-image dir:/path/to/rootfs
 
 # Filter by severity
-security-scanner scan-image alpine:3.18 --severity high
+calvigil scan-image alpine:3.18 --severity high
 ```
 
 The image scanner:

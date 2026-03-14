@@ -5,8 +5,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/security-scanner/security-scanner/internal/models"
-	"github.com/security-scanner/security-scanner/internal/scanner"
+	"github.com/calvigil/calvigil/internal/models"
+	"github.com/calvigil/calvigil/internal/scanner"
 	"github.com/spf13/cobra"
 )
 
@@ -27,28 +27,28 @@ In auto mode the scanner picks Ollama when it is reachable, otherwise OpenAI.
 Use --skip-ai to run dependency scanning only (no API key required).
 Use --skip-deps to run AI analysis only.`,
 	Example: `  # Scan current directory
-  security-scanner scan
+  calvigil scan
 
   # Scan a specific project
-  security-scanner scan /path/to/project
+  calvigil scan /path/to/project
 
   # Output as JSON
-  security-scanner scan --format json
+  calvigil scan --format json
 
   # Output as SARIF
-  security-scanner scan --format sarif --output results.sarif
+  calvigil scan --format sarif --output results.sarif
 
   # Dependencies only (no OpenAI key needed)
-  security-scanner scan --skip-ai
+  calvigil scan --skip-ai
 
   # Only report high and critical vulnerabilities
-  security-scanner scan --severity high
+  calvigil scan --severity high
 
   # Use local Ollama model
-  security-scanner scan --provider ollama --ollama-model llama3
+  calvigil scan --provider ollama --ollama-model llama3
 
   # Use a remote Ollama server
-  security-scanner scan --provider ollama --ollama-url http://gpu-server:11434 --ollama-model codellama`,
+  calvigil scan --provider ollama --ollama-url http://gpu-server:11434 --ollama-model codellama`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runScan,
 }

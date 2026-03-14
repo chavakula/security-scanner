@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"github.com/security-scanner/security-scanner/cmd"
+	"github.com/calvigil/calvigil/cmd"
 )
 
 func main() {

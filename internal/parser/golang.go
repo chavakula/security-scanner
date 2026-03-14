@@ -3,7 +3,7 @@ package parser
 import (
 	"io"
 
-	"github.com/security-scanner/security-scanner/internal/models"
+	"github.com/calvigil/calvigil/internal/models"
 	"golang.org/x/mod/modfile"
 )
 

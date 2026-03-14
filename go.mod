@@ -1,4 +1,4 @@
-module github.com/security-scanner/security-scanner
+module github.com/calvigil/calvigil
 
 go 1.25.0
 

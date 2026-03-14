@@ -7,7 +7,7 @@ import (
 	"os"
 	"os/exec"
 
-	"github.com/security-scanner/security-scanner/internal/models"
+	"github.com/calvigil/calvigil/internal/models"
 )
 
 // PDFReporter generates a PDF report by rendering the HTML report and
@@ -69,7 +69,7 @@ func (r *PDFReporter) Report(result *models.ScanResult, w io.Writer) error {
 	}
 
 	// Step 2: Write HTML to a temp file (Chrome reads from a file).
-	tmpHTML, err := os.CreateTemp("", "security-scanner-*.html")
+	tmpHTML, err := os.CreateTemp("", "calvigil-*.html")
 	if err != nil {
 		return fmt.Errorf("cannot create temp file: %w", err)
 	}
@@ -82,7 +82,7 @@ func (r *PDFReporter) Report(result *models.ScanResult, w io.Writer) error {
 	tmpHTML.Close()
 
 	// Step 3: Create a temp file for the PDF output.
-	tmpPDF, err := os.CreateTemp("", "security-scanner-*.pdf")
+	tmpPDF, err := os.CreateTemp("", "calvigil-*.pdf")
 	if err != nil {
 		return fmt.Errorf("cannot create temp PDF file: %w", err)
 	}

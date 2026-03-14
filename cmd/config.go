@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/security-scanner/security-scanner/internal/config"
+	"github.com/calvigil/calvigil/internal/config"
 	"github.com/spf13/cobra"
 )
 
@@ -12,7 +12,7 @@ var configCmd = &cobra.Command{
 	Short: "Manage scanner configuration",
 	Long: `Manage configuration values like API keys.
 
-Configuration is stored in ~/.security-scanner.json.
+Configuration is stored in ~/.calvigil.json.
 Environment variables (OPENAI_API_KEY, NVD_API_KEY, GITHUB_TOKEN) take precedence.`,
 }
 
@@ -24,9 +24,9 @@ var configSetCmd = &cobra.Command{
   openai-model   OpenAI model to use (default: gpt-4)
   nvd-key        NVD API key for vulnerability lookups
   github-token   GitHub token for advisory database access`,
-	Example: `  security-scanner config set openai-key sk-...
-  security-scanner config set openai-model gpt-4-turbo
-  security-scanner config set nvd-key xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`,
+	Example: `  calvigil config set openai-key sk-...
+  calvigil config set openai-model gpt-4-turbo
+  calvigil config set nvd-key xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`,
 	Args: cobra.ExactArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := config.Set(args[0], args[1]); err != nil {
@@ -40,7 +40,7 @@ var configSetCmd = &cobra.Command{
 var configGetCmd = &cobra.Command{
 	Use:     "get <key>",
 	Short:   "Get a configuration value",
-	Example: `  security-scanner config get openai-model`,
+	Example: `  calvigil config get openai-model`,
 	Args:    cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		val, err := config.Get(args[0])

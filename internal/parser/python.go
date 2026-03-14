@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/security-scanner/security-scanner/internal/models"
+	"github.com/calvigil/calvigil/internal/models"
 )
 
 // RequirementsTxtParser parses Python requirements.txt files.

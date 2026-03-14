@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	configFileName = ".security-scanner.json"
+	configFileName = ".calvigil.json"
 )
 
 // Config holds all configuration for the scanner.

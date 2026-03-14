@@ -11,9 +11,9 @@ var (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "security-scanner",
+	Use:   "calvigil",
 	Short: "AI-powered vulnerability scanner for Go, Java, Python & Node.js projects",
-	Long: "security-scanner is an open-source CLI tool that scans your projects for\n" +
+	Long: "calvigil is an open-source CLI tool that scans your projects for\n" +
 		"security vulnerabilities using two complementary engines:\n\n" +
 		"  1. Dependency scanning - checks your dependencies against CVE databases\n" +
 		"     (OSV, NVD, GitHub Advisory)\n" +

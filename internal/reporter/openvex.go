@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/security-scanner/security-scanner/internal/models"
+	"github.com/calvigil/calvigil/internal/models"
 )
 
 // OpenVEXReporter outputs scan results as an OpenVEX v0.2.0 document.
@@ -58,12 +58,12 @@ type vexSubcomponent struct {
 func (r *OpenVEXReporter) Report(result *models.ScanResult, w io.Writer) error {
 	doc := vexDocument{
 		Context:   "https://openvex.dev/ns/v0.2.0",
-		ID:        fmt.Sprintf("https://security-scanner/vex/%s", generateVEXID(result)),
-		Author:    "security-scanner",
+		ID:        fmt.Sprintf("https://calvigil/vex/%s", generateVEXID(result)),
+		Author:    "calvigil",
 		Role:      "tool",
 		Timestamp: result.ScannedAt.UTC().Format(time.RFC3339),
 		Version:   1,
-		Tooling:   "security-scanner/0.1.0",
+		Tooling:   "calvigil/0.1.0",
 	}
 
 	// The "product" is the scanned project itself

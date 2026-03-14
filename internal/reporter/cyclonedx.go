@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/security-scanner/security-scanner/internal/models"
+	"github.com/calvigil/calvigil/internal/models"
 )
 
 // CycloneDXReporter outputs scan results as a CycloneDX v1.5 BOM with VDR (vulnerability data).
@@ -102,7 +102,7 @@ func (r *CycloneDXReporter) Report(result *models.ScanResult, w io.Writer) error
 		Metadata: cdxMetadata{
 			Timestamp: result.ScannedAt.UTC().Format(time.RFC3339),
 			Tools: []cdxTool{
-				{Vendor: "security-scanner", Name: "security-scanner", Version: "0.1.0"},
+				{Vendor: "calvigil", Name: "calvigil", Version: "0.1.0"},
 			},
 		},
 	}

@@ -6,11 +6,11 @@ import (
 	"os"
 	"strings"
 
-	"github.com/security-scanner/security-scanner/internal/config"
-	imgscanner "github.com/security-scanner/security-scanner/internal/image"
-	"github.com/security-scanner/security-scanner/internal/matcher"
-	"github.com/security-scanner/security-scanner/internal/models"
-	"github.com/security-scanner/security-scanner/internal/reporter"
+	"github.com/calvigil/calvigil/internal/config"
+	imgscanner "github.com/calvigil/calvigil/internal/image"
+	"github.com/calvigil/calvigil/internal/matcher"
+	"github.com/calvigil/calvigil/internal/models"
+	"github.com/calvigil/calvigil/internal/reporter"
 	"github.com/spf13/cobra"
 )
 
@@ -35,16 +35,16 @@ The image argument can be:
   - A local archive: docker-archive:image.tar
   - A directory:      dir:/path/to/rootfs`,
 	Example: `  # Scan a Docker image
-  security-scanner scan-image nginx:latest
+  calvigil scan-image nginx:latest
 
   # Scan with JSON output
-  security-scanner scan-image python:3.12-slim --format json
+  calvigil scan-image python:3.12-slim --format json
 
   # Scan and write SARIF report
-  security-scanner scan-image node:20 --format sarif --output results.sarif
+  calvigil scan-image node:20 --format sarif --output results.sarif
 
   # Only report high and critical
-  security-scanner scan-image alpine:3.18 --severity high`,
+  calvigil scan-image alpine:3.18 --severity high`,
 	Args: cobra.ExactArgs(1),
 	RunE: runScanImage,
 }
