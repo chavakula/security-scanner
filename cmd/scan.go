@@ -56,7 +56,7 @@ Use --skip-deps to run AI analysis only.`,
 func init() {
 	rootCmd.AddCommand(scanCmd)
 
-	scanCmd.Flags().StringVarP(&scanOpts.Format, "format", "f", "table", "output format: table, json, sarif, cyclonedx, openvex")
+	scanCmd.Flags().StringVarP(&scanOpts.Format, "format", "f", "table", "output format: table, json, sarif, cyclonedx, openvex, html, pdf")
 	scanCmd.Flags().StringVarP(&scanOpts.OutputFile, "output", "o", "", "write output to file (default: stdout)")
 	scanCmd.Flags().StringVarP((*string)(&scanOpts.SeverityFilter), "severity", "s", "", "minimum severity to report: critical, high, medium, low")
 	scanCmd.Flags().BoolVar(&scanOpts.SkipAI, "skip-ai", false, "skip AI-powered code analysis")

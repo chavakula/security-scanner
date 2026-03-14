@@ -45,7 +45,7 @@ An open-source, AI-powered vulnerability scanner CLI for **Go**, **Java**, **Pyt
   - **Python** 🐍: `requirements.txt`, `Pipfile.lock`, `poetry.lock`
   - **Node.js** 📗: `package-lock.json`, `yarn.lock`, `pnpm-lock.yaml`
 
-- **Multiple Output Formats**: Terminal table, JSON, SARIF v2.1.0, CycloneDX v1.5, OpenVEX v0.2.0
+- **Multiple Output Formats**: Terminal table, JSON, SARIF v2.1.0, CycloneDX v1.5, OpenVEX v0.2.0, HTML, PDF
 
 ## Installation
 
@@ -99,6 +99,12 @@ security-scanner scan --format cyclonedx --output sbom.json
 
 # Output as OpenVEX
 security-scanner scan --format openvex --output vex.json
+
+# Executive-friendly HTML report
+security-scanner scan --format html --output report.html
+
+# PDF report (requires wkhtmltopdf)
+security-scanner scan --format pdf --output report.pdf
 
 # Run with custom Semgrep rules
 security-scanner scan --semgrep-rules ./my-rules/
@@ -163,7 +169,7 @@ Available Commands:
   help        Help about any command
 
 Scan Flags:
-  -f, --format string           Output format: table, json, sarif, cyclonedx, openvex (default "table")
+  -f, --format string           Output format: table, json, sarif, cyclonedx, openvex, html, pdf (default "table")
   -o, --output string           Write output to file (default: stdout)
   -s, --severity string         Minimum severity: critical, high, medium, low
       --skip-ai                 Skip AI-powered code analysis
@@ -176,7 +182,7 @@ Scan Flags:
   -v, --verbose                 Enable verbose output
 
 Scan-Image Flags:
-  -f, --format string           Output format: table, json, sarif, cyclonedx, openvex (default "table")
+  -f, --format string           Output format: table, json, sarif, cyclonedx, openvex, html, pdf (default "table")
   -o, --output string           Write output to file (default: stdout)
   -s, --severity string         Minimum severity: critical, high, medium, low
   -v, --verbose                 Enable verbose output
@@ -202,7 +208,7 @@ Scan-Image Flags:
 4. **Analyze**: Runs regex pattern matching + AI analysis (OpenAI or Ollama) on source code
 5. **Semgrep SAST**: Runs Semgrep CE with bundled or custom rule packs for static analysis
 6. **Enrich**: AI enrichment layer adds impact, confidence, remediation, and suppression rationale
-7. **Report**: Outputs results in the requested format (table, JSON, SARIF, CycloneDX, or OpenVEX)
+7. **Report**: Outputs results in the requested format (table, JSON, SARIF, CycloneDX, OpenVEX, HTML, or PDF)
 
 ## Supported Vulnerability Patterns (Code Analysis)
 
@@ -251,6 +257,8 @@ security-scanner scan --skip-semgrep /path/to/project
 | SARIF | `--format sarif` | v2.1.0 | GitHub Code Scanning, VS Code, IDE integrations |
 | CycloneDX | `--format cyclonedx` | v1.5 | SBOM/VDR with components, PURLs, and vulnerabilities |
 | OpenVEX | `--format openvex` | v0.2.0 | Vulnerability exploitability exchange with status/justification |
+| HTML | `--format html` | — | Executive-friendly report with severity charts, badges, and AI enrichment |
+| PDF | `--format pdf` | — | Print-ready PDF report for MIS/management audiences (requires `wkhtmltopdf`) |
 
 ### PURL (Package URL)
 

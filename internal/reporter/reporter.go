@@ -23,6 +23,10 @@ func ForFormat(format string) Reporter {
 		return &CycloneDXReporter{}
 	case "openvex":
 		return &OpenVEXReporter{}
+	case "html":
+		return &HTMLReporter{}
+	case "pdf":
+		return &PDFReporter{}
 	default:
 		return &TableReporter{}
 	}

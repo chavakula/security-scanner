@@ -26,11 +26,13 @@ A comprehensive reference for all commands, flags, configuration, and usage exam
   - [SARIF Output](#4-sarif-output-for-github-code-scanning--vs-code)
   - [CycloneDX SBOM Output](#5-cyclonedx-sbom-output)
   - [OpenVEX Output](#6-openvex-output)
-  - [Filter by Severity](#7-filter-by-severity)
-  - [Write to File](#8-write-output-to-file)
-  - [AI-Powered Code Analysis](#9-ai-powered-code-analysis)
-  - [AI-Only (Skip Dependencies)](#10-ai-only-scan-skip-dependency-checking)
-  - [Full Scan (Dependencies + AI)](#11-full-scan-dependencies--ai-code-analysis)
+  - [HTML Report](#7-html-report)
+  - [PDF Report](#8-pdf-report)
+  - [Filter by Severity](#9-filter-by-severity)
+  - [Write to File](#10-write-output-to-file)
+  - [AI-Powered Code Analysis](#11-ai-powered-code-analysis)
+  - [AI-Only (Skip Dependencies)](#12-ai-only-scan-skip-dependency-checking)
+  - [Full Scan (Dependencies + AI)](#13-full-scan-dependencies--ai-code-analysis)
 - [Semgrep SAST Engine](#semgrep-sast-engine)
   - [Setup](#setup)
   - [Bundled Rule Packs](#bundled-rule-packs)
@@ -192,7 +194,7 @@ security-scanner scan [path] [flags]
 
 | Flag | Short | Default | Description |
 |------|-------|---------|-------------|
-| `--format` | `-f` | `table` | Output format: `table`, `json`, `sarif`, `cyclonedx`, `openvex` |
+| `--format` | `-f` | `table` | Output format: `table`, `json`, `sarif`, `cyclonedx`, `openvex`, `html`, `pdf` |
 | `--output` | `-o` | stdout | Write output to a file |
 | `--severity` | `-s` | (all) | Minimum severity filter: `critical`, `high`, `medium`, `low` |
 | `--skip-ai` | — | `false` | Skip AI code analysis (dependency scan only) |
@@ -224,7 +226,7 @@ security-scanner scan-image <image> [flags]
 
 | Flag | Short | Default | Description |
 |------|-------|---------|-------------|
-| `--format` | `-f` | `table` | Output format: `table`, `json`, `sarif`, `cyclonedx`, `openvex` |
+| `--format` | `-f` | `table` | Output format: `table`, `json`, `sarif`, `cyclonedx`, `openvex`, `html`, `pdf` |
 | `--output` | `-o` | stdout | Write output to a file |
 | `--severity` | `-s` | (all) | Minimum severity filter: `critical`, `high`, `medium`, `low` |
 | `--verbose` | `-v` | `false` | Show detailed progress output |
@@ -540,7 +542,44 @@ OpenVEX statuses are determined by AI enrichment confidence:
 
 ---
 
-### 7. Filter by Severity
+### 7. HTML Report
+
+Generate a professional, self-contained HTML report with severity charts, color-coded badges, and AI enrichment details. Ideal for sharing with management, MIS teams, or non-technical stakeholders:
+
+```bash
+security-scanner scan --format html --output report.html /path/to/project
+```
+
+The HTML report includes:
+- **Executive summary cards** — total, critical, high, medium, low counts at a glance
+- **Severity distribution bar** — visual breakdown by severity
+- **Dependency vulnerability table** — sorted by severity with package info, fix versions
+- **Code analysis & Semgrep findings** — file locations, line numbers
+- **AI enrichment details** — impact, confidence, remediation, suppression rationale
+- **Print-friendly CSS** — looks good when printed from a browser
+
+The report is fully self-contained (all CSS embedded) with no external dependencies.
+
+---
+
+### 8. PDF Report
+
+Generate a print-ready PDF report. This uses `wkhtmltopdf` to convert the HTML report to PDF:
+
+```bash
+# Install wkhtmltopdf first
+brew install --cask wkhtmltopdf   # macOS
+apt-get install wkhtmltopdf        # Debian/Ubuntu
+
+# Generate PDF
+security-scanner scan --format pdf --output report.pdf /path/to/project
+```
+
+The PDF output is A4-sized with proper margins, suitable for printing and email distribution. It contains the same content as the HTML report.
+
+---
+
+### 9. Filter by Severity
 
 Only show vulnerabilities at or above a given severity level:
 
@@ -557,7 +596,7 @@ security-scanner scan -s medium /path/to/project
 
 ---
 
-### 8. Write Output to File
+### 10. Write Output to File
 
 ```bash
 # Table output to file
@@ -574,11 +613,17 @@ security-scanner scan --format cyclonedx --output sbom.json /path/to/project
 
 # OpenVEX to file
 security-scanner scan --format openvex --output vex.json /path/to/project
+
+# HTML report
+security-scanner scan --format html --output report.html /path/to/project
+
+# PDF report (requires wkhtmltopdf)
+security-scanner scan --format pdf --output report.pdf /path/to/project
 ```
 
 ---
 
-### 9. AI-Powered Code Analysis
+### 11. AI-Powered Code Analysis
 
 **Prerequisites:** Set your OpenAI API key first.
 
@@ -627,7 +672,7 @@ Summary: 4 total vulnerabilities
 
 ---
 
-### 10. AI-Only Scan (Skip Dependency Checking)
+### 12. AI-Only Scan (Skip Dependency Checking)
 
 Only run code analysis (pattern matching + AI):
 
@@ -637,7 +682,7 @@ security-scanner scan --skip-deps -v /path/to/project
 
 ---
 
-### 11. Full Scan (Dependencies + AI Code Analysis)
+### 13. Full Scan (Dependencies + AI Code Analysis)
 
 Run everything — dependencies against all CVE databases and AI code analysis:
 

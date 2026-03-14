@@ -52,7 +52,7 @@ The image argument can be:
 func init() {
 	rootCmd.AddCommand(scanImageCmd)
 
-	scanImageCmd.Flags().StringVarP(&imageOpts.format, "format", "f", "table", "output format: table, json, sarif, cyclonedx, openvex")
+	scanImageCmd.Flags().StringVarP(&imageOpts.format, "format", "f", "table", "output format: table, json, sarif, cyclonedx, openvex, html, pdf")
 	scanImageCmd.Flags().StringVarP(&imageOpts.outputFile, "output", "o", "", "write output to file (default: stdout)")
 	scanImageCmd.Flags().StringVarP(&imageOpts.severity, "severity", "s", "", "minimum severity to report: critical, high, medium, low")
 }
