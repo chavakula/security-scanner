@@ -19,7 +19,10 @@ var scanCmd = &cobra.Command{
 
 This command performs two types of analysis:
   - Dependency scanning: checks your lock files against CVE databases (OSV, NVD, GitHub Advisory)
-  - AI code analysis: uses OpenAI GPT-4 to detect OWASP Top 10 patterns in source code
+  - AI code analysis: uses OpenAI GPT-4 or a local Ollama model to detect OWASP Top 10 patterns
+
+Use --provider to choose the AI backend: openai, ollama, or auto (default).
+In auto mode the scanner picks Ollama when it is reachable, otherwise OpenAI.
 
 Use --skip-ai to run dependency scanning only (no API key required).
 Use --skip-deps to run AI analysis only.`,
@@ -39,7 +42,13 @@ Use --skip-deps to run AI analysis only.`,
   security-scanner scan --skip-ai
 
   # Only report high and critical vulnerabilities
-  security-scanner scan --severity high`,
+  security-scanner scan --severity high
+
+  # Use local Ollama model
+  security-scanner scan --provider ollama --ollama-model llama3
+
+  # Use a remote Ollama server
+  security-scanner scan --provider ollama --ollama-url http://gpu-server:11434 --ollama-model codellama`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runScan,
 }
@@ -54,6 +63,9 @@ func init() {
 	scanCmd.Flags().BoolVar(&scanOpts.SkipDeps, "skip-deps", false, "skip dependency vulnerability scanning")
 	scanCmd.Flags().BoolVar(&scanOpts.SkipSemgrep, "skip-semgrep", false, "skip Semgrep SAST analysis")
 	scanCmd.Flags().StringVar(&scanOpts.SemgrepRules, "semgrep-rules", "", "path to custom Semgrep rule directory")
+	scanCmd.Flags().StringVar(&scanOpts.AIProvider, "provider", "auto", "AI provider: openai, ollama, or auto")
+	scanCmd.Flags().StringVar(&scanOpts.OllamaURL, "ollama-url", "", "Ollama server URL (default: http://localhost:11434)")
+	scanCmd.Flags().StringVar(&scanOpts.OllamaModel, "ollama-model", "", "Ollama model name (e.g. llama3, codellama, mistral)")
 }
 
 func runScan(cmd *cobra.Command, args []string) error {

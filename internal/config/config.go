@@ -17,6 +17,8 @@ type Config struct {
 	OpenAIModel string `json:"openai_model,omitempty"`
 	NVDKey      string `json:"nvd_api_key,omitempty"`
 	GitHubToken string `json:"github_token,omitempty"`
+	OllamaURL   string `json:"ollama_url,omitempty"`
+	OllamaModel string `json:"ollama_model,omitempty"`
 }
 
 // configFilePath returns the path to the config file in the user's home directory.
@@ -57,6 +59,12 @@ func Load() (*Config, error) {
 	if v := os.Getenv("GITHUB_TOKEN"); v != "" {
 		cfg.GitHubToken = v
 	}
+	if v := os.Getenv("OLLAMA_URL"); v != "" {
+		cfg.OllamaURL = v
+	}
+	if v := os.Getenv("OLLAMA_MODEL"); v != "" {
+		cfg.OllamaModel = v
+	}
 
 	return cfg, nil
 }
@@ -96,8 +104,12 @@ func Set(key, value string) error {
 		cfg.NVDKey = value
 	case "github-token":
 		cfg.GitHubToken = value
+	case "ollama-url":
+		cfg.OllamaURL = value
+	case "ollama-model":
+		cfg.OllamaModel = value
 	default:
-		return fmt.Errorf("unknown config key: %s (valid keys: openai-key, openai-model, nvd-key, github-token)", key)
+		return fmt.Errorf("unknown config key: %s (valid keys: openai-key, openai-model, nvd-key, github-token, ollama-url, ollama-model)", key)
 	}
 
 	return Save(cfg)
@@ -119,6 +131,10 @@ func Get(key string) (string, error) {
 		return maskSecret(cfg.NVDKey), nil
 	case "github-token":
 		return maskSecret(cfg.GitHubToken), nil
+	case "ollama-url":
+		return cfg.OllamaURL, nil
+	case "ollama-model":
+		return cfg.OllamaModel, nil
 	default:
 		return "", fmt.Errorf("unknown config key: %s", key)
 	}

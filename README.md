@@ -9,12 +9,25 @@ An open-source, AI-powered vulnerability scanner CLI for **Go**, **Java**, **Pyt
   - [NVD](https://nvd.nist.gov/) (NIST National Vulnerability Database)
   - [GitHub Advisory Database](https://github.com/advisories)
 
-- **AI-Powered Code Analysis** — uses OpenAI GPT-4 to detect OWASP Top 10 vulnerabilities:
+- **AI-Powered Code Analysis** — uses OpenAI GPT-4 or local Ollama models to detect OWASP Top 10 vulnerabilities:
   - SQL Injection, Command Injection, XSS
   - Hardcoded secrets & API keys
   - Insecure cryptography, TLS misconfigurations
   - Path traversal, insecure deserialization
   - CORS misconfiguration, and more
+  - **Provider choice**: `--provider openai`, `--provider ollama`, or `--provider auto` (default)
+
+- **Local LLM Support — Ollama Integration**:
+  - Run AI analysis entirely offline with models like `llama3`, `codellama`, `mistral`
+  - OpenAI-compatible API with native Ollama fallback
+  - Auto-detection: if Ollama is reachable, it's preferred over OpenAI
+  - Configure via CLI flags (`--ollama-url`, `--ollama-model`) or config/env vars
+
+- **Container Image Scanning**:
+  - Scan Docker/OCI images for known vulnerabilities
+  - Powered by [syft](https://github.com/anchore/syft) for SBOM extraction
+  - Supports Docker images, archives, and directories
+  - Full vulnerability matching against OSV, NVD, and GitHub Advisory
 
 - **SAST Engine — Semgrep CE Integration** with custom rule packs:
   - 30 bundled security rules covering OWASP Top 10 + language-specific patterns
@@ -65,6 +78,16 @@ security-scanner scan /path/to/project
 security-scanner config set openai-key sk-...
 security-scanner scan
 
+# Use local Ollama model (no API key needed)
+security-scanner scan --provider ollama --ollama-model llama3
+
+# Auto-detect: uses Ollama if reachable, otherwise OpenAI
+security-scanner scan --provider auto
+
+# Scan a container image for vulnerabilities (requires syft)
+security-scanner scan-image nginx:latest
+security-scanner scan-image python:3.12-slim --format json
+
 # Output as JSON
 security-scanner scan --format json
 
@@ -97,12 +120,20 @@ Configuration is stored in `~/.security-scanner.json`. Environment variables tak
 ### API Keys
 
 ```bash
-# OpenAI (required for AI code analysis)
+# OpenAI (required for AI code analysis with OpenAI provider)
 security-scanner config set openai-key sk-...
 # or: export OPENAI_API_KEY=sk-...
 
 # OpenAI model (default: gpt-4)
 security-scanner config set openai-model gpt-4-turbo
+
+# Ollama URL (default: http://localhost:11434)
+security-scanner config set ollama-url http://localhost:11434
+# or: export OLLAMA_URL=http://localhost:11434
+
+# Ollama model (e.g. llama3, codellama, mistral)
+security-scanner config set ollama-model llama3
+# or: export OLLAMA_MODEL=llama3
 
 # NVD API key (optional, increases rate limits)
 security-scanner config set nvd-key xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
@@ -126,19 +157,29 @@ security-scanner [command]
 
 Available Commands:
   scan        Scan a project for security vulnerabilities
+  scan-image  Scan a container image for vulnerabilities
   config      Manage scanner configuration
   version     Print the version
   help        Help about any command
 
 Scan Flags:
-  -f, --format string         Output format: table, json, sarif, cyclonedx, openvex (default "table")
-  -o, --output string         Write output to file (default: stdout)
-  -s, --severity string       Minimum severity: critical, high, medium, low
-      --skip-ai               Skip AI-powered code analysis
-      --skip-deps             Skip dependency vulnerability scanning
-      --skip-semgrep          Skip Semgrep SAST analysis
-      --semgrep-rules string  Path to custom Semgrep rule directory
-  -v, --verbose               Enable verbose output
+  -f, --format string           Output format: table, json, sarif, cyclonedx, openvex (default "table")
+  -o, --output string           Write output to file (default: stdout)
+  -s, --severity string         Minimum severity: critical, high, medium, low
+      --skip-ai                 Skip AI-powered code analysis
+      --skip-deps               Skip dependency vulnerability scanning
+      --skip-semgrep            Skip Semgrep SAST analysis
+      --semgrep-rules string    Path to custom Semgrep rule directory
+      --provider string         AI provider: openai, ollama, or auto (default "auto")
+      --ollama-url string       Ollama server URL (default: http://localhost:11434)
+      --ollama-model string     Ollama model name (e.g. llama3, codellama, mistral)
+  -v, --verbose                 Enable verbose output
+
+Scan-Image Flags:
+  -f, --format string           Output format: table, json, sarif, cyclonedx, openvex (default "table")
+  -o, --output string           Write output to file (default: stdout)
+  -s, --severity string         Minimum severity: critical, high, medium, low
+  -v, --verbose                 Enable verbose output
 ```
 
 ## How It Works
@@ -158,7 +199,7 @@ Scan Flags:
 1. **Detect**: Walks the project directory to find dependency manifest files (go.mod, pom.xml, package-lock.json, etc.)
 2. **Parse & PURL**: Extracts package names and versions, generates Package URLs (PURLs) per the [PURL spec](https://github.com/package-url/purl-spec)
 3. **Match**: Queries OSV, NVD, and GitHub Advisory databases for known CVEs
-4. **Analyze**: Runs regex pattern matching + OpenAI GPT-4 analysis on source code
+4. **Analyze**: Runs regex pattern matching + AI analysis (OpenAI or Ollama) on source code
 5. **Semgrep SAST**: Runs Semgrep CE with bundled or custom rule packs for static analysis
 6. **Enrich**: AI enrichment layer adds impact, confidence, remediation, and suppression rationale
 7. **Report**: Outputs results in the requested format (table, JSON, SARIF, CycloneDX, or OpenVEX)
@@ -221,6 +262,59 @@ All packages are identified using [PURL](https://github.com/package-url/purl-spe
 | npm | `pkg:npm/@babel/helpers@7.15.4` |
 | PyPI | `pkg:pypi/requests@2.28.0` |
 | Maven | `pkg:maven/org.apache.logging.log4j/log4j-core@2.17.0` |
+
+## Ollama (Local LLM) Support
+
+Run AI-powered analysis entirely offline using [Ollama](https://ollama.ai/) with models like `llama3`, `codellama`, or `mistral`.
+
+```bash
+# Install Ollama and pull a model
+ollama pull llama3
+
+# Scan with Ollama
+security-scanner scan --provider ollama --ollama-model llama3
+
+# Use a remote Ollama server
+security-scanner scan --provider ollama --ollama-url http://gpu-server:11434 --ollama-model codellama
+
+# Auto mode (default): uses Ollama if reachable, otherwise OpenAI
+security-scanner scan
+```
+
+**Provider selection (`--provider`)**:
+- `auto` (default): Tries Ollama first (if configured and reachable), falls back to OpenAI
+- `ollama`: Use only Ollama (fails if unreachable)
+- `openai`: Use only OpenAI (requires API key)
+
+## Container Image Scanning
+
+Scan Docker/OCI container images for vulnerabilities using [syft](https://github.com/anchore/syft):
+
+```bash
+# Install syft
+brew install syft  # macOS
+# or: curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh
+
+# Scan a Docker image
+security-scanner scan-image nginx:latest
+
+# Scan with a specific output format
+security-scanner scan-image python:3.12-slim --format json
+security-scanner scan-image node:20 --format sarif --output results.sarif
+
+# Scan local archives or directories
+security-scanner scan-image docker-archive:image.tar
+security-scanner scan-image dir:/path/to/rootfs
+
+# Filter by severity
+security-scanner scan-image alpine:3.18 --severity high
+```
+
+The image scanner:
+1. Uses **syft** to extract an SBOM from the container image
+2. Maps packages to supported ecosystems (npm, PyPI, Go, Maven, Ruby, Rust, Debian, Alpine, RPM)
+3. Matches all packages against **OSV**, **NVD**, and **GitHub Advisory** databases
+4. Reports findings in any supported format (table, JSON, SARIF, CycloneDX, OpenVEX)
 
 ## License
 

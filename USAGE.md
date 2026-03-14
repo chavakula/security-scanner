@@ -15,6 +15,7 @@ A comprehensive reference for all commands, flags, configuration, and usage exam
   - [All Config Keys](#all-config-keys)
 - [Commands Reference](#commands-reference)
   - [scan](#scan)
+  - [scan-image](#scan-image)
   - [config set](#config-set)
   - [config get](#config-get)
   - [version](#version)
@@ -49,6 +50,14 @@ A comprehensive reference for all commands, flags, configuration, and usage exam
   - [How It Works](#how-it-works)
   - [Enrichment Output Fields](#enrichment-output-fields)
   - [Example Enriched Output](#example-enriched-output)
+- [Ollama (Local LLM) Support](#ollama-local-llm-support)
+  - [Setup](#ollama-setup)
+  - [Provider Selection](#provider-selection)
+  - [Configuration](#ollama-configuration)
+- [Container Image Scanning](#container-image-scanning)
+  - [Prerequisites](#prerequisites)
+  - [Usage Examples](#image-scanning-examples)
+  - [Supported Ecosystems](#image-supported-ecosystems)
 - [Supported Ecosystems & Files](#supported-ecosystems--files)
 - [Vulnerability Databases](#vulnerability-databases)
 - [Exit Codes](#exit-codes)
@@ -85,7 +94,9 @@ Configuration is stored in `~/.security-scanner.json`:
   "openai_api_key": "sk-proj-...",
   "openai_model": "gpt-4",
   "nvd_api_key": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
-  "github_token": "ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+  "github_token": "ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "ollama_url": "http://localhost:11434",
+  "ollama_model": "llama3"
 }
 ```
 
@@ -99,6 +110,8 @@ Environment variables **always take precedence** over config file values:
 | `OPENAI_MODEL` | OpenAI model name (default: `gpt-4`) |
 | `NVD_API_KEY` | NIST NVD API key for vulnerability lookups |
 | `GITHUB_TOKEN` | GitHub token for advisory database access |
+| `OLLAMA_URL` | Ollama server URL (default: `http://localhost:11434`) |
+| `OLLAMA_MODEL` | Ollama model name (e.g. `llama3`, `codellama`, `mistral`) |
 
 **Example — using environment variables:**
 
@@ -154,6 +167,8 @@ security-scanner config get nvd-key
 | `openai-model` | No | `gpt-4` | Model to use (`gpt-4`, `gpt-4-turbo`, `gpt-4o`, etc.) |
 | `nvd-key` | No | — | NVD API key for higher rate limits |
 | `github-token` | No | — | GitHub personal access token |
+| `ollama-url` | No | `http://localhost:11434` | Ollama server URL |
+| `ollama-model` | No | — | Ollama model name (e.g. `llama3`, `codellama`) |
 
 ---
 
@@ -184,6 +199,34 @@ security-scanner scan [path] [flags]
 | `--skip-deps` | — | `false` | Skip dependency scan (code analysis only) |
 | `--skip-semgrep` | — | `false` | Skip Semgrep SAST analysis |
 | `--semgrep-rules` | — | (bundled) | Path to custom Semgrep rule directory |
+| `--provider` | — | `auto` | AI provider: `openai`, `ollama`, or `auto` |
+| `--ollama-url` | — | `http://localhost:11434` | Ollama server URL |
+| `--ollama-model` | — | — | Ollama model name (e.g. `llama3`, `codellama`, `mistral`) |
+| `--verbose` | `-v` | `false` | Show detailed progress output |
+
+---
+
+### `scan-image`
+
+Scan a container image for vulnerabilities. Requires [syft](https://github.com/anchore/syft).
+
+```
+security-scanner scan-image <image> [flags]
+```
+
+**Arguments:**
+
+| Argument | Required | Description |
+|----------|----------|-------------|
+| `image` | Yes | Image reference: `nginx:latest`, `docker-archive:image.tar`, `dir:/path` |
+
+**Flags:**
+
+| Flag | Short | Default | Description |
+|------|-------|---------|-------------|
+| `--format` | `-f` | `table` | Output format: `table`, `json`, `sarif`, `cyclonedx`, `openvex` |
+| `--output` | `-o` | stdout | Write output to a file |
+| `--severity` | `-s` | (all) | Minimum severity filter: `critical`, `high`, `medium`, `low` |
 | `--verbose` | `-v` | `false` | Show detailed progress output |
 
 ---
@@ -203,6 +246,8 @@ security-scanner config set openai-key sk-proj-abc123...
 security-scanner config set openai-model gpt-4o
 security-scanner config set nvd-key xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 security-scanner config set github-token ghp_xxxxxxxxxxxx
+security-scanner config set ollama-url http://localhost:11434
+security-scanner config set ollama-model llama3
 ```
 
 ---
@@ -925,6 +970,143 @@ To skip AI enrichment (e.g., for faster scans), use `--skip-ai`:
 ```bash
 security-scanner scan ./my-project --skip-ai
 ```
+
+---
+
+## Ollama (Local LLM) Support
+
+Run AI-powered code analysis and enrichment entirely offline using [Ollama](https://ollama.ai/).
+
+### Ollama Setup
+
+```bash
+# 1. Install Ollama
+# macOS
+brew install ollama
+
+# Linux
+curl -fsSL https://ollama.ai/install.sh | sh
+
+# 2. Start the Ollama server
+ollama serve
+
+# 3. Pull a model
+ollama pull llama3         # general-purpose
+ollama pull codellama      # code-focused
+ollama pull mistral        # fast and capable
+
+# 4. Configure the scanner
+security-scanner config set ollama-model llama3
+# or via environment variable:
+export OLLAMA_MODEL=llama3
+```
+
+### Provider Selection
+
+The `--provider` flag controls which AI backend is used:
+
+| Provider | Behavior |
+|----------|----------|
+| `auto` (default) | Uses Ollama if configured and reachable, otherwise falls back to OpenAI |
+| `ollama` | Uses Ollama only; fails if Ollama is not available |
+| `openai` | Uses OpenAI only; requires `openai-key` configured |
+
+```bash
+# Auto-detect (default) — Ollama first, then OpenAI
+security-scanner scan
+
+# Force Ollama
+security-scanner scan --provider ollama --ollama-model llama3
+
+# Force OpenAI
+security-scanner scan --provider openai
+
+# Use a remote Ollama server
+security-scanner scan --provider ollama \
+  --ollama-url http://gpu-server:11434 \
+  --ollama-model codellama
+```
+
+### Ollama Configuration
+
+Configuration priority (highest to lowest):
+1. CLI flags (`--ollama-url`, `--ollama-model`)
+2. Environment variables (`OLLAMA_URL`, `OLLAMA_MODEL`)
+3. Config file (`~/.security-scanner.json`)
+
+```bash
+# Persist Ollama settings
+security-scanner config set ollama-url http://localhost:11434
+security-scanner config set ollama-model llama3
+
+# Or use environment variables
+export OLLAMA_URL=http://localhost:11434
+export OLLAMA_MODEL=llama3
+```
+
+The Ollama analyzer supports both OpenAI-compatible (`/v1/chat/completions`) and native Ollama (`/api/chat`) endpoints, with automatic fallback.
+
+---
+
+## Container Image Scanning
+
+Scan Docker/OCI container images for known vulnerabilities.
+
+### Prerequisites
+
+Install [syft](https://github.com/anchore/syft) — an SBOM generator for container images:
+
+```bash
+# macOS
+brew install syft
+
+# Linux
+curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+```
+
+### Image Scanning Examples
+
+```bash
+# Scan a Docker Hub image
+security-scanner scan-image nginx:latest
+
+# Scan with verbose output
+security-scanner scan-image python:3.12-slim -v
+
+# Output as JSON
+security-scanner scan-image node:20 --format json
+
+# Output as SARIF for CI integration
+security-scanner scan-image ubuntu:22.04 --format sarif --output results.sarif
+
+# Output as CycloneDX SBOM
+security-scanner scan-image alpine:3.18 --format cyclonedx --output sbom.json
+
+# Filter by severity
+security-scanner scan-image python:3.12 --severity high
+
+# Scan a local Docker archive
+security-scanner scan-image docker-archive:myapp.tar
+
+# Scan an extracted root filesystem
+security-scanner scan-image dir:/path/to/rootfs
+```
+
+### Image Supported Ecosystems
+
+The image scanner maps syft artifact types to vulnerability ecosystems:
+
+| Syft Type | Ecosystem | Database |
+|-----------|-----------|----------|
+| `npm` | npm | OSV, NVD, GitHub Advisory |
+| `python`, `pip`, `wheel` | PyPI | OSV, NVD, GitHub Advisory |
+| `go-module` | Go | OSV, NVD, GitHub Advisory |
+| `java-archive`, `maven` | Maven | OSV, NVD, GitHub Advisory |
+| `gem` | RubyGems | OSV |
+| `rust-crate` | crates.io | OSV |
+| `deb` | DEB (Debian) | OSV |
+| `apk` | APK (Alpine) | OSV |
+| `rpm` | RPM (RHEL/CentOS) | OSV |
 
 ---
 

@@ -103,20 +103,22 @@ func (s *Scanner) Run(ctx context.Context) error {
 	}
 
 	// Step 3.5: AI enrichment layer — enrich ALL vulnerabilities with structured analysis
-	if !s.opts.SkipAI && s.cfg.OpenAIKey != "" && len(allVulns) > 0 {
-		if s.opts.Verbose {
-			fmt.Fprintf(os.Stderr, "Running AI enrichment on %d findings...\n", len(allVulns))
-		}
-		ai := analyzer.NewOpenAIAnalyzer(s.cfg.OpenAIKey, s.cfg.OpenAIModel)
-		allVulns = ai.EnrichVulnerabilities(ctx, allVulns, s.opts.Path, s.opts.Verbose)
-		if s.opts.Verbose {
-			enriched := 0
-			for _, v := range allVulns {
-				if v.AIEnrichment != nil {
-					enriched++
-				}
+	if !s.opts.SkipAI && len(allVulns) > 0 {
+		enricher := s.getAIEnricher()
+		if enricher != nil {
+			if s.opts.Verbose {
+				fmt.Fprintf(os.Stderr, "Running AI enrichment on %d findings...\n", len(allVulns))
 			}
-			fmt.Fprintf(os.Stderr, "   Enriched %d/%d findings\n\n", enriched, len(allVulns))
+			allVulns = enricher.EnrichVulnerabilities(ctx, allVulns, s.opts.Path, s.opts.Verbose)
+			if s.opts.Verbose {
+				enriched := 0
+				for _, v := range allVulns {
+					if v.AIEnrichment != nil {
+						enriched++
+					}
+				}
+				fmt.Fprintf(os.Stderr, "   Enriched %d/%d findings\n\n", enriched, len(allVulns))
+			}
 		}
 	}
 
@@ -219,9 +221,10 @@ func (s *Scanner) scanDependencies(ctx context.Context, files []detector.Detecte
 func (s *Scanner) scanSourceCode(ctx context.Context) ([]models.Vulnerability, []string) {
 	var errs []string
 
-	if s.cfg.OpenAIKey == "" {
+	provider := s.resolveAIProvider()
+	if provider == "" {
 		if s.opts.Verbose {
-			fmt.Fprintf(os.Stderr, "Running pattern-based code analysis (no OpenAI key for AI analysis)...\n")
+			fmt.Fprintf(os.Stderr, "Running pattern-based code analysis (no AI provider available)...\n")
 		}
 
 		// Run pattern matching only
@@ -239,21 +242,36 @@ func (s *Scanner) scanSourceCode(ctx context.Context) ([]models.Vulnerability, [
 		return vulns, errs
 	}
 
-	if s.opts.Verbose {
-		fmt.Fprintf(os.Stderr, "Running AI-powered code analysis (model: %s)...\n", s.cfg.OpenAIModel)
-	}
+	switch provider {
+	case "ollama":
+		url, model := s.ollamaSettings()
+		if s.opts.Verbose {
+			fmt.Fprintf(os.Stderr, "Running AI-powered code analysis (Ollama: %s @ %s)...\n", model, url)
+		}
+		ai := analyzer.NewOllamaAnalyzer(url, model)
+		vulns, err := ai.Analyze(ctx, s.opts.Path, s.opts.Verbose)
+		if err != nil {
+			errs = append(errs, fmt.Sprintf("Ollama analysis error: %v", err))
+		}
+		if s.opts.Verbose {
+			fmt.Fprintf(os.Stderr, "   Found %d issues via code analysis\n\n", len(vulns))
+		}
+		return vulns, errs
 
-	ai := analyzer.NewOpenAIAnalyzer(s.cfg.OpenAIKey, s.cfg.OpenAIModel)
-	vulns, err := ai.Analyze(ctx, s.opts.Path, s.opts.Verbose)
-	if err != nil {
-		errs = append(errs, fmt.Sprintf("AI analysis error: %v", err))
+	default: // openai
+		if s.opts.Verbose {
+			fmt.Fprintf(os.Stderr, "Running AI-powered code analysis (model: %s)...\n", s.cfg.OpenAIModel)
+		}
+		ai := analyzer.NewOpenAIAnalyzer(s.cfg.OpenAIKey, s.cfg.OpenAIModel)
+		vulns, err := ai.Analyze(ctx, s.opts.Path, s.opts.Verbose)
+		if err != nil {
+			errs = append(errs, fmt.Sprintf("AI analysis error: %v", err))
+		}
+		if s.opts.Verbose {
+			fmt.Fprintf(os.Stderr, "   Found %d issues via code analysis\n\n", len(vulns))
+		}
+		return vulns, errs
 	}
-
-	if s.opts.Verbose {
-		fmt.Fprintf(os.Stderr, "   Found %d issues via code analysis\n\n", len(vulns))
-	}
-
-	return vulns, errs
 }
 
 // scanSemgrep runs Semgrep CE SAST analysis on source files.
@@ -442,5 +460,70 @@ func scanFileForImports(filePath string, patterns map[string]bool) {
 				patterns[pkg] = true
 			}
 		}
+	}
+}
+
+// enricher is the interface both OpenAI and Ollama analyzers satisfy for enrichment.
+type enricher interface {
+	EnrichVulnerabilities(ctx context.Context, vulns []models.Vulnerability, projectPath string, verbose bool) []models.Vulnerability
+}
+
+// resolveAIProvider determines which AI provider to use.
+// Returns "openai", "ollama", or "" (none available).
+func (s *Scanner) resolveAIProvider() string {
+	provider := strings.ToLower(s.opts.AIProvider)
+	if provider == "" {
+		provider = "auto"
+	}
+
+	switch provider {
+	case "ollama":
+		return "ollama"
+	case "openai":
+		if s.cfg.OpenAIKey != "" {
+			return "openai"
+		}
+		return ""
+	default: // auto
+		// Prefer Ollama if configured and reachable
+		url, model := s.ollamaSettings()
+		if model != "" {
+			ol := analyzer.NewOllamaAnalyzer(url, model)
+			if ol.Available() {
+				return "ollama"
+			}
+		}
+		// Fall back to OpenAI if key is available
+		if s.cfg.OpenAIKey != "" {
+			return "openai"
+		}
+		return ""
+	}
+}
+
+// ollamaSettings returns the effective Ollama URL and model from CLI flags or config.
+func (s *Scanner) ollamaSettings() (string, string) {
+	url := s.opts.OllamaURL
+	if url == "" {
+		url = s.cfg.OllamaURL
+	}
+	model := s.opts.OllamaModel
+	if model == "" {
+		model = s.cfg.OllamaModel
+	}
+	return url, model
+}
+
+// getAIEnricher returns the appropriate AI enricher based on provider selection, or nil.
+func (s *Scanner) getAIEnricher() enricher {
+	provider := s.resolveAIProvider()
+	switch provider {
+	case "ollama":
+		url, model := s.ollamaSettings()
+		return analyzer.NewOllamaAnalyzer(url, model)
+	case "openai":
+		return analyzer.NewOpenAIAnalyzer(s.cfg.OpenAIKey, s.cfg.OpenAIModel)
+	default:
+		return nil
 	}
 }

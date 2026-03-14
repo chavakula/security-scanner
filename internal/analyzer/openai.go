@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	openai "github.com/sashabaranov/go-openai"
@@ -28,15 +29,91 @@ func NewOpenAIAnalyzer(apiKey, model string) *OpenAIAnalyzer {
 	}
 }
 
+// flexInt handles JSON values that may be either a number or a string containing a number.
+// Local LLMs (Ollama) often return "line": "42" instead of "line": 42.
+type flexInt int
+
+func (fi *flexInt) UnmarshalJSON(b []byte) error {
+	// Try as int first
+	var n int
+	if err := json.Unmarshal(b, &n); err == nil {
+		*fi = flexInt(n)
+		return nil
+	}
+	// Try as quoted string
+	var s string
+	if err := json.Unmarshal(b, &s); err == nil {
+		if s == "" {
+			*fi = 0
+			return nil
+		}
+		n, err := strconv.Atoi(strings.TrimSpace(s))
+		if err != nil {
+			*fi = 0
+			return nil
+		}
+		*fi = flexInt(n)
+		return nil
+	}
+	*fi = 0
+	return nil
+}
+
 // aiVulnResult represents a vulnerability found by the AI.
 type aiVulnResult struct {
-	ID             string `json:"id"`
-	Name           string `json:"name"`
-	Description    string `json:"description"`
-	Severity       string `json:"severity"`
-	File           string `json:"file"`
-	Line           int    `json:"line"`
-	Recommendation string `json:"recommendation"`
+	ID             string  `json:"id"`
+	Name           string  `json:"name"`
+	Description    string  `json:"description"`
+	Severity       string  `json:"severity"`
+	File           string  `json:"file"`
+	Line           flexInt `json:"line"`
+	Recommendation string  `json:"recommendation"`
+}
+
+// extractJSONArray finds the first JSON array in text, handling cases where the
+// LLM wraps the JSON in markdown fences or explanatory prose.
+func extractJSONArray(text string) string {
+	text = strings.TrimSpace(text)
+
+	// Strip markdown code fences (```json ... ``` or ``` ... ```)
+	if idx := strings.Index(text, "```json"); idx != -1 {
+		text = text[idx+7:]
+		if end := strings.Index(text, "```"); end != -1 {
+			text = text[:end]
+		}
+		return strings.TrimSpace(text)
+	}
+	if idx := strings.Index(text, "```"); idx != -1 {
+		inner := text[idx+3:]
+		if end := strings.Index(inner, "```"); end != -1 {
+			inner = inner[:end]
+			// If the content inside fences starts with [ or {, use it
+			trimmed := strings.TrimSpace(inner)
+			if len(trimmed) > 0 && (trimmed[0] == '[' || trimmed[0] == '{') {
+				return trimmed
+			}
+		}
+	}
+
+	// Find the outermost [ ... ] bracket pair
+	start := strings.Index(text, "[")
+	if start != -1 {
+		depth := 0
+		for i := start; i < len(text); i++ {
+			switch text[i] {
+			case '[':
+				depth++
+			case ']':
+				depth--
+				if depth == 0 {
+					return text[start : i+1]
+				}
+			}
+		}
+	}
+
+	// Already clean
+	return strings.TrimSpace(text)
 }
 
 func (a *OpenAIAnalyzer) Analyze(ctx context.Context, projectPath string, verbose bool) ([]models.Vulnerability, error) {
@@ -166,13 +243,7 @@ func (a *OpenAIAnalyzer) callOpenAI(ctx context.Context, userPrompt, projectPath
 	}
 
 	content := resp.Choices[0].Message.Content
-	content = strings.TrimSpace(content)
-
-	// Strip markdown code fences if present
-	content = strings.TrimPrefix(content, "```json")
-	content = strings.TrimPrefix(content, "```")
-	content = strings.TrimSuffix(content, "```")
-	content = strings.TrimSpace(content)
+	content = extractJSONArray(content)
 
 	var results []aiVulnResult
 	if err := json.Unmarshal([]byte(content), &results); err != nil {
@@ -196,8 +267,8 @@ func (a *OpenAIAnalyzer) callOpenAI(ctx context.Context, userPrompt, projectPath
 			Severity:  models.Severity(strings.ToUpper(r.Severity)),
 			Source:    models.SourceAIAnalysis,
 			FilePath:  filePath,
-			StartLine: r.Line,
-			EndLine:   r.Line,
+			StartLine: int(r.Line),
+			EndLine:   int(r.Line),
 		})
 	}
 
@@ -294,11 +365,7 @@ func (a *OpenAIAnalyzer) callEnrichment(ctx context.Context, userPrompt string, 
 	}
 
 	content := resp.Choices[0].Message.Content
-	content = strings.TrimSpace(content)
-	content = strings.TrimPrefix(content, "```json")
-	content = strings.TrimPrefix(content, "```")
-	content = strings.TrimSuffix(content, "```")
-	content = strings.TrimSpace(content)
+	content = extractJSONArray(content)
 
 	var results []aiEnrichmentResult
 	if err := json.Unmarshal([]byte(content), &results); err != nil {
