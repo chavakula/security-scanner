@@ -52,7 +52,7 @@ An open-source, AI-powered vulnerability scanner CLI for **Go**, **Java**, **Pyt
 ### From Source
 
 ```bash
-git clone https://github.com/calvigil/calvigil.git
+git clone https://github.com/chavakula/calvigil.git
 cd calvigil
 make build
 ```
@@ -62,7 +62,7 @@ The binary will be at `./bin/calvigil`.
 ### Go Install
 
 ```bash
-go install github.com/calvigil/calvigil@latest
+go install github.com/chavakula/calvigil@latest
 ```
 
 ## Quick Start

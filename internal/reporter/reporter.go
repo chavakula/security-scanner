@@ -3,7 +3,7 @@ package reporter
 import (
 	"io"
 
-	"github.com/calvigil/calvigil/internal/models"
+	"github.com/chavakula/calvigil/internal/models"
 )
 
 // Reporter writes scan results in a specific format.

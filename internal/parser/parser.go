@@ -3,7 +3,7 @@ package parser
 import (
 	"io"
 
-	"github.com/calvigil/calvigil/internal/models"
+	"github.com/chavakula/calvigil/internal/models"
 )
 
 // Parser parses a dependency manifest file and extracts packages.

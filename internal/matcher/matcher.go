@@ -3,7 +3,7 @@ package matcher
 import (
 	"context"
 
-	"github.com/calvigil/calvigil/internal/models"
+	"github.com/chavakula/calvigil/internal/models"
 )
 
 // Matcher queries a vulnerability database for known CVEs affecting given packages.

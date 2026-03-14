@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/calvigil/calvigil/internal/models"
+	"github.com/chavakula/calvigil/internal/models"
 )
 
 // OpenVEXReporter outputs scan results as an OpenVEX v0.2.0 document.

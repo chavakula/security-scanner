@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/calvigil/calvigil/internal/models"
+	"github.com/chavakula/calvigil/internal/models"
 	"gopkg.in/yaml.v3"
 )
 

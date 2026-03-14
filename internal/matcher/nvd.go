@@ -8,7 +8,7 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/calvigil/calvigil/internal/models"
+	"github.com/chavakula/calvigil/internal/models"
 )
 
 const nvdBaseURL = "https://services.nvd.nist.gov/rest/json/cves/2.0"

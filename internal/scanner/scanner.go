@@ -10,13 +10,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/calvigil/calvigil/internal/analyzer"
-	"github.com/calvigil/calvigil/internal/config"
-	"github.com/calvigil/calvigil/internal/detector"
-	"github.com/calvigil/calvigil/internal/matcher"
-	"github.com/calvigil/calvigil/internal/models"
-	"github.com/calvigil/calvigil/internal/parser"
-	"github.com/calvigil/calvigil/internal/reporter"
+	"github.com/chavakula/calvigil/internal/analyzer"
+	"github.com/chavakula/calvigil/internal/config"
+	"github.com/chavakula/calvigil/internal/detector"
+	"github.com/chavakula/calvigil/internal/matcher"
+	"github.com/chavakula/calvigil/internal/models"
+	"github.com/chavakula/calvigil/internal/parser"
+	"github.com/chavakula/calvigil/internal/reporter"
 )
 
 // Scanner orchestrates the full vulnerability scanning pipeline.

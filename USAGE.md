@@ -71,7 +71,7 @@ A comprehensive reference for all commands, flags, configuration, and usage exam
 ### From Source
 
 ```bash
-git clone https://github.com/calvigil/calvigil.git
+git clone https://github.com/chavakula/calvigil.git
 cd calvigil
 make build
 # binary is at ./bin/calvigil
@@ -80,7 +80,7 @@ make build
 ### Go Install
 
 ```bash
-go install github.com/calvigil/calvigil@latest
+go install github.com/chavakula/calvigil@latest
 ```
 
 ---

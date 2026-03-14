@@ -8,7 +8,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/calvigil/calvigil/internal/models"
+	"github.com/chavakula/calvigil/internal/models"
 )
 
 // PatternRule defines a regex-based vulnerability detection rule.

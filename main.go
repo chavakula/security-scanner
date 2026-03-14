@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"github.com/calvigil/calvigil/cmd"
+	"github.com/chavakula/calvigil/cmd"
 )
 
 func main() {

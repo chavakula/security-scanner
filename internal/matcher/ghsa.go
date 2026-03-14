@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/calvigil/calvigil/internal/models"
+	"github.com/chavakula/calvigil/internal/models"
 )
 
 const ghAdvisoryURL = "https://api.github.com/advisories"

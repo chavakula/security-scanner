@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/calvigil/calvigil/internal/config"
+	"github.com/chavakula/calvigil/internal/config"
 	"github.com/spf13/cobra"
 )
 
