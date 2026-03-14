@@ -441,16 +441,10 @@ const htmlTemplate = `<!DOCTYPE html>
   }
   .enrichment .vuln-field-label { color: #3949ab; }
   .enrichment .wide { grid-column: 1 / -1; }
-  .enrichment details { grid-column: 1 / -1; }
   .conf-badge { padding: 1px 8px; border-radius: 8px; font-size: 0.7rem; font-weight: 600; }
   .conf-badge.high   { background: #c8e6c9; color: #2e7d32; }
   .conf-badge.medium { background: #fff9c4; color: #f57f17; }
   .conf-badge.low    { background: #ffcdd2; color: #c62828; }
-
-  /* Details / collapsible */
-  details { margin-top: 6px; }
-  details summary { cursor: pointer; color: #3949ab; font-size: 0.82rem; }
-  details[open] summary { margin-bottom: 6px; }
 
   /* Eco group header */
   .eco-group-header {
@@ -581,7 +575,7 @@ const htmlTemplate = `<!DOCTYPE html>
         {{if .Enrichment.LikelyImpact}}<div class="vuln-field"><span class="vuln-field-label">Impact</span><span class="vuln-field-value">{{.Enrichment.LikelyImpact}}</span></div>{{end}}
         {{if .Enrichment.MinimalRemediation}}<div class="vuln-field"><span class="vuln-field-label">Remediation</span><span class="vuln-field-value">{{.Enrichment.MinimalRemediation}}</span></div>{{end}}
         {{if .Enrichment.SuppressionRationale}}
-        <details><summary>Suppression rationale</summary><p style="margin-top:4px">{{.Enrichment.SuppressionRationale}}</p></details>
+        <div class="vuln-field wide suppression"><span class="vuln-field-label">Suppression</span><span class="vuln-field-value">{{.Enrichment.SuppressionRationale}}</span></div>
         {{end}}
       </div>
       {{end}}

@@ -103,7 +103,7 @@ security-scanner scan --format openvex --output vex.json
 # Executive-friendly HTML report
 security-scanner scan --format html --output report.html
 
-# PDF report (requires wkhtmltopdf)
+# PDF report (requires Chrome or Chromium)
 security-scanner scan --format pdf --output report.pdf
 
 # Run with custom Semgrep rules
@@ -258,7 +258,7 @@ security-scanner scan --skip-semgrep /path/to/project
 | CycloneDX | `--format cyclonedx` | v1.5 | SBOM/VDR with components, PURLs, and vulnerabilities |
 | OpenVEX | `--format openvex` | v0.2.0 | Vulnerability exploitability exchange with status/justification |
 | HTML | `--format html` | — | Executive-friendly report with severity charts, badges, and AI enrichment |
-| PDF | `--format pdf` | — | Print-ready PDF report for MIS/management audiences (requires `wkhtmltopdf`) |
+| PDF | `--format pdf` | — | Print-ready PDF report for MIS/management audiences (requires Chrome or Chromium) |
 
 ### PURL (Package URL)
 

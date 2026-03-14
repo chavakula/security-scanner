@@ -564,18 +564,23 @@ The report is fully self-contained (all CSS embedded) with no external dependenc
 
 ### 8. PDF Report
 
-Generate a print-ready PDF report. This uses `wkhtmltopdf` to convert the HTML report to PDF:
+Generate a print-ready PDF report. This uses headless Chrome/Chromium (`--print-to-pdf`) to convert the HTML report to PDF:
 
 ```bash
-# Install wkhtmltopdf first
-brew install --cask wkhtmltopdf   # macOS
-apt-get install wkhtmltopdf        # Debian/Ubuntu
+# Chrome is typically pre-installed; or install it:
+brew install --cask google-chrome   # macOS
+brew install --cask chromium         # macOS (Chromium)
+apt-get install chromium-browser     # Debian/Ubuntu
 
 # Generate PDF
 security-scanner scan --format pdf --output report.pdf /path/to/project
+
+# Or point to a custom Chrome binary
+export CHROME_PATH=/usr/bin/chromium
+security-scanner scan --format pdf --output report.pdf /path/to/project
 ```
 
-The PDF output is A4-sized with proper margins, suitable for printing and email distribution. It contains the same content as the HTML report.
+The PDF uses Chrome's print engine for pixel-perfect rendering of CSS grid, flexbox, and media queries. It contains the same content as the HTML report.
 
 ---
 
@@ -617,7 +622,7 @@ security-scanner scan --format openvex --output vex.json /path/to/project
 # HTML report
 security-scanner scan --format html --output report.html /path/to/project
 
-# PDF report (requires wkhtmltopdf)
+# PDF report (requires Chrome or Chromium)
 security-scanner scan --format pdf --output report.pdf /path/to/project
 ```
 

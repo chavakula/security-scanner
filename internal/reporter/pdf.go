@@ -11,22 +11,53 @@ import (
 )
 
 // PDFReporter generates a PDF report by rendering the HTML report and
-// converting it to PDF using wkhtmltopdf.
+// converting it to PDF using headless Chrome/Chromium (--print-to-pdf).
 type PDFReporter struct{}
 
-// WkhtmltopdfAvailable checks whether wkhtmltopdf is installed.
-func WkhtmltopdfAvailable() bool {
-	_, err := exec.LookPath("wkhtmltopdf")
-	return err == nil
+// chromePath returns the path to a usable Chrome or Chromium binary,
+// or an empty string if none is found.
+func chromePath() string {
+	// Prefer an explicit env override.
+	if p := os.Getenv("CHROME_PATH"); p != "" {
+		if _, err := exec.LookPath(p); err == nil {
+			return p
+		}
+	}
+
+	// Well-known binary names / paths (macOS, Linux, Windows).
+	candidates := []string{
+		"google-chrome",
+		"google-chrome-stable",
+		"chromium",
+		"chromium-browser",
+		"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+		"/Applications/Chromium.app/Contents/MacOS/Chromium",
+	}
+	for _, c := range candidates {
+		if _, err := exec.LookPath(c); err == nil {
+			return c
+		}
+	}
+	return ""
+}
+
+// ChromeAvailable reports whether a usable Chrome/Chromium binary exists.
+func ChromeAvailable() bool {
+	return chromePath() != ""
 }
 
 func (r *PDFReporter) Report(result *models.ScanResult, w io.Writer) error {
-	if !WkhtmltopdfAvailable() {
+	chrome := chromePath()
+	if chrome == "" {
 		return fmt.Errorf(
-			"wkhtmltopdf is not installed; it is required for PDF output\n\n" +
-				"  brew install --cask wkhtmltopdf   # macOS\n" +
-				"  apt-get install wkhtmltopdf        # Debian/Ubuntu\n" +
-				"  yum install wkhtmltopdf            # RHEL/CentOS\n\n" +
+			"Google Chrome or Chromium is required for PDF output but was not found\n\n" +
+				"Install one of the following:\n" +
+				"  brew install --cask google-chrome   # macOS\n" +
+				"  brew install --cask chromium         # macOS (Chromium)\n" +
+				"  apt-get install chromium-browser     # Debian/Ubuntu\n" +
+				"  yum install chromium                 # RHEL/CentOS\n\n" +
+				"Or set CHROME_PATH to the binary location:\n" +
+				"  export CHROME_PATH=/usr/bin/chromium\n\n" +
 				"Alternatively, use --format html and convert the HTML file manually")
 	}
 
@@ -37,7 +68,7 @@ func (r *PDFReporter) Report(result *models.ScanResult, w io.Writer) error {
 		return fmt.Errorf("HTML rendering failed: %w", err)
 	}
 
-	// Step 2: Write HTML to a temp file (wkhtmltopdf reads from a file).
+	// Step 2: Write HTML to a temp file (Chrome reads from a file).
 	tmpHTML, err := os.CreateTemp("", "security-scanner-*.html")
 	if err != nil {
 		return fmt.Errorf("cannot create temp file: %w", err)
@@ -58,24 +89,22 @@ func (r *PDFReporter) Report(result *models.ScanResult, w io.Writer) error {
 	defer os.Remove(tmpPDF.Name())
 	tmpPDF.Close()
 
-	// Step 4: Convert HTML → PDF via wkhtmltopdf.
-	cmd := exec.Command("wkhtmltopdf",
-		"--quiet",
-		"--enable-local-file-access",
-		"--page-size", "A4",
-		"--margin-top", "10mm",
-		"--margin-bottom", "10mm",
-		"--margin-left", "10mm",
-		"--margin-right", "10mm",
-		"--encoding", "UTF-8",
-		"--print-media-type",
+	// Step 4: Convert HTML → PDF via headless Chrome.
+	cmd := exec.Command(chrome,
+		"--headless",
+		"--disable-gpu",
+		"--no-sandbox",
+		"--disable-software-rasterizer",
+		"--run-all-compositor-stages-before-draw",
+		"--print-to-pdf="+tmpPDF.Name(),
+		"--print-to-pdf-no-header",
+		"--no-pdf-header-footer",
 		tmpHTML.Name(),
-		tmpPDF.Name(),
 	)
 	cmd.Stderr = os.Stderr
 
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("wkhtmltopdf conversion failed: %w", err)
+		return fmt.Errorf("Chrome PDF conversion failed: %w\nUsed binary: %s", err, chrome)
 	}
 
 	// Step 5: Read the generated PDF and write to the output writer.
